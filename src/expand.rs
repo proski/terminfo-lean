@@ -326,9 +326,9 @@ impl Expand for [u8] {
 								}
 							}
 
-							Binary::AND => x & y,
-							Binary::OR => x | y,
-							Binary::XOR => x ^ y,
+							Binary::AndBitwise => x & y,
+							Binary::OrBitwise => x | y,
+							Binary::XorBitwise => x ^ y,
 
 							Binary::And => (x != 0 && y != 0) as i32,
 							Binary::Or => (x != 0 || y != 0) as i32,
@@ -347,7 +347,7 @@ impl Expand for [u8] {
 				Item::Operation(Operation::Unary(operation)) => match stack.pop() {
 					Some(Parameter::Number(x)) => stack.push(Parameter::Number(match operation {
 						Unary::Not => (x != 0) as i32,
-						Unary::NOT => !x,
+						Unary::NotBitwise => !x,
 					})),
 
 					Some(_) => return Err(error::Expand::TypeMismatch.into()),
@@ -363,7 +363,7 @@ impl Expand for [u8] {
 
 							Format::Oct => (value as f32).abs().log(8.0).floor() as usize + 1,
 
-							Format::Hex | Format::HEX => {
+							Format::Hex | Format::HexUpper => {
 								(value as f32).abs().log(16.0).floor() as usize + 1
 							}
 
@@ -385,7 +385,7 @@ impl Expand for [u8] {
 						// Add the alternate representation.
 						if p.flags.alternate {
 							match p.format {
-								Format::Hex | Format::HEX => length += 2,
+								Format::Hex | Format::HexUpper => length += 2,
 
 								Format::Oct => length += 1,
 
@@ -492,7 +492,7 @@ impl Expand for [u8] {
 							f!(after value);
 						}
 
-						(Format::HEX, Some(Parameter::Number(value))) => {
+						(Format::HexUpper, Some(Parameter::Number(value))) => {
 							f!(before value);
 
 							if p.flags.alternate {
