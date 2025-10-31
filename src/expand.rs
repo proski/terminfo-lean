@@ -86,7 +86,7 @@ pub struct Context {
 /// Write the expansion to `stdout`.
 ///
 /// ```
-/// use terminfo::{Database, capability as cap, expand};
+/// use terminfo_lean::{Database, capability as cap, expand};
 /// use std::io;
 ///
 /// # fn main() {
@@ -102,7 +102,7 @@ pub struct Context {
 /// Load the expansion for later usage.
 ///
 /// ```
-/// use terminfo::{Database, capability as cap, expand};
+/// use terminfo_lean::{Database, capability as cap, expand};
 /// use std::io;
 ///
 /// # fn main() {
