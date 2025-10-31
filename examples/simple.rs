@@ -1,5 +1,5 @@
 use std::io;
-use terminfo::{capability as cap, Database};
+use terminfo_lean::{capability as cap, Database};
 
 fn main() {
 	let info = Database::from_env().unwrap();

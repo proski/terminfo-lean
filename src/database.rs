@@ -67,7 +67,7 @@ impl Builder {
 	/// ## Example
 	///
 	/// ```
-	/// use terminfo::{Database, capability as cap};
+	/// use terminfo_lean::{Database, capability as cap};
 	///
 	/// let mut info = Database::new();
 	/// info.name("foo");
@@ -93,7 +93,7 @@ impl Builder {
 	/// ## Example
 	///
 	/// ```
-	/// use terminfo::{Database, capability as cap};
+	/// use terminfo_lean::{Database, capability as cap};
 	///
 	/// let mut info = Database::new();
 	/// info.name("foo");
@@ -239,7 +239,7 @@ impl Database {
 	/// ## Example
 	///
 	/// ```
-	/// use terminfo::{Database, capability as cap};
+	/// use terminfo_lean::{Database, capability as cap};
 	///
 	/// let info        = Database::from_env().unwrap();
 	/// let colors: i32 = info.get::<cap::MaxColors>().unwrap().into();
@@ -258,7 +258,7 @@ impl Database {
 	/// ## Example
 	///
 	/// ```
-	/// use terminfo::Database;
+	/// use terminfo_lean::Database;
 	///
 	/// let info      = Database::from_env().unwrap();
 	/// let truecolor = info.raw("Tc").is_some();

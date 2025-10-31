@@ -1,12 +1,10 @@
 terminfo-lean
 =============
-[![Crates.io](https://img.shields.io/crates/v/terminfo.svg)](https://crates.io/crates/terminfo) [![Crates.io](https://img.shields.io/crates/d/terminfo.svg)](https://crates.io/crates/terminfo) [![Build Status](https://github.com/proski/terminfo-lean/actions/workflows/rust.yml/badge.svg)](https://github.com/proski/terminfo-lean/actions/workflows/rust.yml)
+[![Build Status](https://github.com/proski/terminfo-lean/actions/workflows/rust.yml/badge.svg)](https://github.com/proski/terminfo-lean/actions/workflows/rust.yml)
 
 Rust crate that provides access to terminal capabilities from the terminfo database.
 
 This is a fork of the terminfo crate intended to be simple and lightweight.
-
-[Documentation](https://docs.rs/terminfo/latest/terminfo/)
 
 Licensing
 ---------
@@ -14,12 +12,17 @@ Licensing
 terminfo-lean is licensed under Apache License, Version 2.0. Please see
 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
 
+Documentation
+-------------
+
+The crate documentation will be available under <https://docs.rs/terminfo/latest/terminfo-lean/>
+
 Example
 -------
 
 ```rust
 use std::io;
-use terminfo::{capability as cap, Database};
+use terminfo_lean::{capability as cap, Database};
 
 fn main() {
 	let info = Database::from_env().unwrap();
