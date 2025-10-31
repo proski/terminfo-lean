@@ -42,7 +42,7 @@ pub enum Operation {
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum Unary {
 	Not,
-	NOT,
+	NotBitwise,
 }
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
@@ -53,9 +53,9 @@ pub enum Binary {
 	Divide,
 	Remainder,
 
-	AND,
-	OR,
-	XOR,
+	AndBitwise,
+	OrBitwise,
+	XorBitwise,
 
 	And,
 	Or,
@@ -87,7 +87,7 @@ pub enum Format {
 	Dec,
 	Oct,
 	Hex,
-	HEX,
+	HexUpper,
 }
 
 #[derive(Eq, PartialEq, Copy, Clone, Default, Debug)]
@@ -179,10 +179,10 @@ fn operation(input: &[u8]) -> IResult<&[u8], Item<'_>> {
 		b"m" => Ok((input, Item::Operation(Operation::Binary(Binary::Remainder)))),
 		b"i" => Ok((input, Item::Operation(Operation::Increment))),
 
-		b"&" => Ok((input, Item::Operation(Operation::Binary(Binary::AND)))),
-		b"|" => Ok((input, Item::Operation(Operation::Binary(Binary::OR)))),
-		b"^" => Ok((input, Item::Operation(Operation::Binary(Binary::XOR)))),
-		b"~" => Ok((input, Item::Operation(Operation::Unary(Unary::NOT)))),
+		b"&" => Ok((input, Item::Operation(Operation::Binary(Binary::AndBitwise)))),
+		b"|" => Ok((input, Item::Operation(Operation::Binary(Binary::OrBitwise)))),
+		b"^" => Ok((input, Item::Operation(Operation::Binary(Binary::XorBitwise)))),
+		b"~" => Ok((input, Item::Operation(Operation::Unary(Unary::NotBitwise)))),
 
 		b"A" => Ok((input, Item::Operation(Operation::Binary(Binary::And)))),
 		b"O" => Ok((input, Item::Operation(Operation::Binary(Binary::Or)))),
@@ -239,7 +239,7 @@ fn print(input: &[u8]) -> IResult<&[u8], Item<'_>> {
 				'd' => Format::Dec,
 				'o' => Format::Oct,
 				'x' => Format::Hex,
-				'X' => Format::HEX,
+				'X' => Format::HexUpper,
 				's' => Format::Str,
 				'c' => Format::Chr,
 				'u' => Format::Uni,
@@ -326,16 +326,16 @@ mod test {
 			Operation(Operation::Binary(Binary::Remainder)));
 
 		test!(b"%&" =>
-			Operation(Operation::Binary(Binary::AND)));
+			Operation(Operation::Binary(Binary::AndBitwise)));
 
 		test!(b"%|" =>
-			Operation(Operation::Binary(Binary::OR)));
+			Operation(Operation::Binary(Binary::OrBitwise)));
 
 		test!(b"%^" =>
-			Operation(Operation::Binary(Binary::XOR)));
+			Operation(Operation::Binary(Binary::XorBitwise)));
 
 		test!(b"%~" =>
-			Operation(Operation::Unary(Unary::NOT)));
+			Operation(Operation::Unary(Unary::NotBitwise)));
 
 		test!(b"%A" =>
 			Operation(Operation::Binary(Binary::And)));
