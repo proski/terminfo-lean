@@ -8,7 +8,7 @@ license = "Apache-2.0"
 
 description = "Terminal information."
 repository  = "https://github.com/proski/terminfo-lean"
-keywords    = ["terminal", "terminfo", "termcap", "term"]
+keywords    = ["terminal", "terminfo", "term"]
 categories  = ["command-line-interface"]
 
 build = "build.rs"

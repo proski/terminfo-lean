@@ -20,5 +20,5 @@ pub use crate::capability::{Capability, Value};
 mod database;
 pub use crate::database::Database;
 
-/// Constants to deal with name differences across terminfo and termcap.
+/// Constants to deal with name differences across terminfo.
 pub mod names;
