@@ -117,7 +117,7 @@ impl Builder {
 }
 
 impl Database {
-	/// Create a database builder for constucting a database.
+	/// Create a database builder for constructing a database.
 	// Clippy is right, the naming is is unconventional, but it’s probably not worth changing
 	#[allow(clippy::new_ret_no_self)]
 	pub fn new() -> Builder {
