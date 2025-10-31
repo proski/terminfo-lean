@@ -6,6 +6,10 @@ Rust crate that provides access to terminal capabilities from the terminfo datab
 
 This is a fork of the terminfo crate intended to be simple and lightweight.
 
+This crate will be REMOVING FEATURES until further notice. If you depend on
+this crate, prepare for a wild ride! Don't even think of depending on
+terminfo-lean in a project that doesn't keep Cargo.lock under version control.
+
 Licensing
 ---------
 
