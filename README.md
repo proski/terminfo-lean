@@ -49,7 +49,7 @@ fn main() {
 Packaging and Distributing
 --------------------------
 For all terminals but windows consoles, this library depends on a non-hashed
-(for now) terminfo database being present. For example, on Debian derivitives,
+(for now) terminfo database being present. For example, on Debian derivatives,
 you should depend on ncurses-term; on Arch Linux, you depend on ncurses; and on
 MinGW, you should depend on mingw32-terminfo.
 
