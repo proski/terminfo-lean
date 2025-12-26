@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Parsing terminfo database files
+
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::{Cursor, Read, Seek, SeekFrom},
@@ -79,14 +81,19 @@ enum TerminfoMagic {
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
 pub enum Error {
+    /// The magic number is invalid or unsupported
     #[error("Unknown magic number")]
     BadMagic,
+    /// A string is not terminated by the NUL byte
     #[error("String without final NUL")]
     UnterminatedString,
+    /// Unexpected condition, probably invalid terminfo database
     #[error("Unsupported terminfo format")]
     UnsupportedFormat,
+    /// Input/output error, probably truncated terminfo database
     #[error("I/O error")]
     IO(#[from] std::io::Error),
+    /// A string is not valid UTF-8
     #[error("Invalid UTF-8 string")]
     Utf8(#[from] std::str::Utf8Error),
 }

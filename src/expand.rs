@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Parameterized string expansion
+//! Expansion of capability strings with parameters
 
 use std::{array::from_fn, iter::repeat_n};
 
@@ -72,26 +72,37 @@ impl From<&str> for Parameter {
 #[derive(thiserror::Error, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Error {
+    /// The operator does not have required data on stack
     #[error("Not enough stack elements for operator {0}")]
     StackUnderflow(char),
+    /// The data type on stack is not expected by the operator
     #[error("Parameter type not expected by operator {0}")]
     TypeMismatch(char),
+    /// Unknown or unsupported format option
     #[error("Unrecognized format option: {0}")]
     UnrecognizedFormatOption(char),
+    /// Variable name is invalid
     #[error("Invalid variable name: {0}")]
     InvalidVariableName(char),
+    /// Parameter index is invalid
     #[error("Invalid parameter index: {0}")]
     InvalidParameterIndex(char),
+    /// Character constant is invalid
     #[error("Malformed character constant")]
     MalformedCharacterConstant,
+    /// Integer constant is too large
     #[error("Integer constant too large")]
     IntegerConstantOverflow,
+    /// Integer constant is invalid
     #[error("Integer constant malformed")]
     MalformedIntegerConstant,
+    /// Format width is too large
     #[error("Overflow in format width")]
     FormatWidthOverflow,
+    // Format precision is too large
     #[error("Overflow in format precision")]
     FormatPrecisionOverflow,
+    /// Argument type is incompatible with the format
     #[error("Unexpected type for format")]
     FormatTypeMismatch,
 }

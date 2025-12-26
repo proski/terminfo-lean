@@ -6,6 +6,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Search for terminfo database file for the terminal
+
 use std::{
     env,
     ffi::OsStr,
@@ -24,8 +26,10 @@ const TERMINFO_DIRS: &[&str] = &[
 #[derive(thiserror::Error, Debug, PartialEq)]
 #[non_exhaustive]
 pub enum Error {
+    /// The name of the terminal is not valid
     #[error("InvalidTerminalName")]
     InvalidTerminalName,
+    /// Terminfo file for the terminal could not be found
     #[error("File not found")]
     FileNotFound,
 }
