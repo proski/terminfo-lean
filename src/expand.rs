@@ -45,26 +45,26 @@ pub enum Parameter {
 }
 
 impl From<i32> for Parameter {
-    fn from(value: i32) -> Parameter {
-        Parameter::Number(value)
+    fn from(value: i32) -> Self {
+        Self::Number(value)
     }
 }
 
 impl From<&[u8]> for Parameter {
-    fn from(value: &[u8]) -> Parameter {
-        Parameter::String(value.to_vec())
+    fn from(value: &[u8]) -> Self {
+        Self::String(value.to_vec())
     }
 }
 
 impl<const N: usize> From<&[u8; N]> for Parameter {
-    fn from(value: &[u8; N]) -> Parameter {
-        Parameter::String(value.to_vec())
+    fn from(value: &[u8; N]) -> Self {
+        Self::String(value.to_vec())
     }
 }
 
 impl From<&str> for Parameter {
-    fn from(value: &str) -> Parameter {
-        Parameter::String(value.as_bytes().to_vec())
+    fn from(value: &str) -> Self {
+        Self::String(value.as_bytes().to_vec())
     }
 }
 
@@ -106,7 +106,8 @@ pub struct ExpandContext {
 }
 
 impl ExpandContext {
-    /// Return a newly initialized ExpandContext
+    /// Return a newly initialized `ExpandContext`
+    #[must_use]
     pub fn new() -> Self {
         Self {
             static_variables: from_fn(|_| Parameter::from(0)),
@@ -140,7 +141,7 @@ impl ExpandContext {
             mparams.push(Parameter::from(0));
         }
 
-        for &c in cap.iter() {
+        for &c in cap {
             let cur = c as char;
             let mut old_state = state;
             match state {
@@ -261,7 +262,7 @@ impl ExpandContext {
                             match cur {
                                 ':' => (),
                                 '#' => flags.alternate = true,
-                                ' ' => flags.space = true,
+                                ' ' => flags.sign = SignFlags::Space,
                                 '.' => fstate = FormatState::Precision,
                                 '0'..='9' => {
                                     flags.width = cur as u16 - '0' as u16;
@@ -300,7 +301,7 @@ impl ExpandContext {
                         'A'..='Z' => self.static_variables[usize::from((cur as u8) - b'A')] = arg,
                         'a'..='z' => dynamic_variables[usize::from((cur as u8) - b'a')] = arg,
                         _ => return Err(Error::InvalidVariableName(cur)),
-                    };
+                    }
                 }
                 States::GetVar => {
                     let value = match cur {
@@ -341,7 +342,7 @@ impl ExpandContext {
                 States::FormatPattern(ref mut flags, ref mut fstate) => {
                     old_state = States::Nothing;
                     match (*fstate, cur) {
-                        (_, 'd') | (_, 'o') | (_, 'x') | (_, 'X') | (_, 's') => {
+                        (_, 'd' | 'o' | 'x' | 'X' | 's') => {
                             if let Some(arg) = stack.pop() {
                                 let res = format(arg, cur, *flags)?;
                                 output.extend(res);
@@ -358,10 +359,10 @@ impl ExpandContext {
                             flags.left = true;
                         }
                         (FormatState::Flags, '+') => {
-                            flags.sign = true;
+                            flags.sign = SignFlags::Plus;
                         }
                         (FormatState::Flags, ' ') => {
-                            flags.space = true;
+                            flags.sign = SignFlags::Space;
                         }
                         (FormatState::Flags, '0'..='9') => {
                             flags.width = cur as u16 - '0' as u16;
@@ -377,7 +378,7 @@ impl ExpandContext {
                                 None => return Err(Error::FormatWidthOverflow),
                             }
                         }
-                        (FormatState::Width, '.') | (FormatState::Flags, '.') => {
+                        (FormatState::Width | FormatState::Flags, '.') => {
                             *fstate = FormatState::Precision;
                         }
                         (FormatState::Precision, '0'..='9') => {
@@ -444,13 +445,20 @@ impl ExpandContext {
 }
 
 #[derive(Copy, PartialEq, Clone, Default)]
+enum SignFlags {
+    #[default]
+    Empty,
+    Space,
+    Plus,
+}
+
+#[derive(Copy, PartialEq, Clone, Default)]
 struct Flags {
     width: u16,
     precision: Option<u16>,
     alternate: bool,
     left: bool,
-    sign: bool,
-    space: bool,
+    sign: SignFlags,
 }
 
 fn format(val: Parameter, op: char, flags: Flags) -> Result<Vec<u8>, Error> {
@@ -459,25 +467,37 @@ fn format(val: Parameter, op: char, flags: Flags) -> Result<Vec<u8>, Error> {
             match op {
                 'd' => match flags.precision {
                     Some(precision) => {
-                        if flags.sign {
-                            format!("{d:+0prec$}", prec = usize::from(precision + 1))
-                        } else if d < 0 {
+                        if d < 0 {
                             format!("{d:0prec$}", prec = usize::from(precision + 1))
-                        } else if flags.space {
-                            format!(" {d:0prec$}", prec = precision.into())
                         } else {
-                            format!("{d:0prec$}", prec = precision.into())
+                            match flags.sign {
+                                SignFlags::Empty => {
+                                    format!("{d:0prec$}", prec = precision.into())
+                                }
+                                SignFlags::Space => {
+                                    format!(" {d:0prec$}", prec = precision.into())
+                                }
+                                SignFlags::Plus => {
+                                    format!("{d:+0prec$}", prec = usize::from(precision + 1))
+                                }
+                            }
                         }
                     }
                     None => {
-                        if flags.sign {
-                            format!("{d:+}")
-                        } else if d < 0 {
+                        if d < 0 {
                             format!("{d}")
-                        } else if flags.space {
-                            format!(" {d}")
                         } else {
-                            format!("{d}")
+                            match flags.sign {
+                                SignFlags::Empty => {
+                                    format!("{d}")
+                                }
+                                SignFlags::Space => {
+                                    format!(" {d}")
+                                }
+                                SignFlags::Plus => {
+                                    format!("{d:+}")
+                                }
+                            }
                         }
                     }
                 },

@@ -128,8 +128,7 @@ fn get_string(string_table: &[u8], offset: usize) -> Result<&[u8], Error> {
 /// Convert ABSENT and CANCELED to None
 fn check_offset(size: u16) -> Option<usize> {
     match i32::from(size as i16) {
-        ABSENT_ENTRY => None,
-        CANCELED_ENTRY => None,
+        ABSENT_ENTRY | CANCELED_ENTRY => None,
         _ => Some(usize::from(size)),
     }
 }
@@ -163,13 +162,14 @@ impl<'a> Terminfo<'a> {
     }
 
     /// Parse terminfo database from the supplied buffer
+    ///
+    /// Returns the `Terminfo` instance with data populated from the buffers.
     pub fn parse(buffer: &'a [u8]) -> Result<Self, Error> {
         let mut terminfo = Self::new();
         let mut reader = Cursor::new(buffer);
         terminfo.parse_base(&mut reader)?;
         match terminfo.parse_extended(&mut reader) {
-            Ok(()) => {}
-            Err(Error::IO(_)) => {} // missing extended data is OK
+            Ok(()) | Err(Error::IO(_)) => {} // missing extended data is OK
             Err(err) => return Err(err),
         }
         Ok(terminfo)
@@ -221,7 +221,7 @@ impl<'a> Terminfo<'a> {
                     self.booleans.insert(*name);
                 }
                 _ => return Err(Error::UnsupportedFormat),
-            };
+            }
         }
 
         align_cursor(reader)?;
@@ -296,7 +296,7 @@ impl<'a> Terminfo<'a> {
             };
             if value != 1 {
                 return Err(Error::UnsupportedFormat);
-            };
+            }
             let Ok(name_offset) = read_le16(&mut names_reader) else {
                 return Err(Error::UnsupportedFormat);
             };
@@ -350,6 +350,7 @@ mod test {
     use super::*;
 
     #[repr(i32)]
+    #[derive(Clone, Copy, PartialEq)]
     enum NumberType {
         U16 = 2,
         U32 = 4,
@@ -360,7 +361,7 @@ mod test {
             NumberType::U16 => (0x011a, &[80, 0xFFFE, 25, 0xFFFF, 0x8000, 82]),
             NumberType::U32 => (
                 0x021e,
-                &[120, 0xFFFFFFFE, 42, 0xFFFFFFFF, 0x80000000, 82000],
+                &[120, 0xFFFF_FFFE, 42, 0xFFFF_FFFF, 0x8000_0000, 82000],
             ),
         };
         let term_name = b"myterm";

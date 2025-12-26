@@ -5,6 +5,22 @@ edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 authors = ["Pavel Roskin", "The Rust Project Developers"]
+repository = "https://github.com/proski/terminfo-lean"
+description = "Terminfo parsing library with simple API and minimal dependencies"
+keywords = ["terminfo", "terminal"]
+categories = ["command-line-interface"]
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+missing_errors_doc = "allow"
+option_if_let_else = "allow"
+too_many_lines = "allow"
 
 [dependencies]
 num_enum = "0.7.5"

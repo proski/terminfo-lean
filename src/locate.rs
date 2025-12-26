@@ -78,7 +78,7 @@ pub fn search_directories() -> Vec<PathBuf> {
     // Search colon separated directories from the `TERMINFO_DIRS`
     // environment variable.
     if let Ok(dirs) = env::var("TERMINFO_DIRS") {
-        for dir in dirs.split(":") {
+        for dir in dirs.split(':') {
             if dir.is_empty() {
                 // Empty directory means search the default locations.
                 search_dirs.extend(&mut default_dirs);
