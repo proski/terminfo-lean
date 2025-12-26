@@ -23,7 +23,6 @@ option_if_let_else = "allow"
 too_many_lines = "allow"
 
 [dependencies]
-num_enum = "0.7.5"
 thiserror = "2.0.17"
 
 [dev-dependencies]

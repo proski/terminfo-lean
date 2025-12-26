@@ -66,7 +66,6 @@ const STR_NAMES: [&str; 414] = [
     "OTG4", "OTGR", "OTGL", "OTGU", "OTGD", "OTGH", "OTGV", "OTGC", "meml", "memu", "box1",
 ];
 
-#[derive(num_enum::TryFromPrimitive)]
 #[repr(u16)]
 enum TerminfoMagic {
     /// Original format, 16-bit numbers
@@ -197,10 +196,10 @@ impl<'a> Terminfo<'a> {
         let str_count = usize::from(read_le16(&mut reader)?);
         let str_size = usize::from(read_le16(&mut reader)?);
 
-        self.number_size = match TerminfoMagic::try_from(magic) {
-            Ok(TerminfoMagic::Magic1) => 2,
-            Ok(TerminfoMagic::Magic2) => 4,
-            Err(_) => return Err(Error::BadMagic),
+        self.number_size = match magic {
+            val if val == TerminfoMagic::Magic1 as u16 => 2,
+            val if val == TerminfoMagic::Magic2 as u16 => 4,
+            _ => return Err(Error::BadMagic),
         };
 
         if bool_count > BOOL_NAMES.len()
