@@ -1,0 +1,613 @@
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::io::Cursor;
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+
+const ABSENT_ENTRY: i32 = -1;
+const CANCELED_ENTRY: i32 = -2;
+
+const BOOL_NAMES: [&str; 44] = [
+    "bw", "am", "xsb", "xhp", "xenl", "eo", "gn", "hc", "km", "hs", "in", "db", "da", "mir",
+    "msgr", "os", "eslok", "xt", "hz", "ul", "xon", "nxon", "mc5i", "chts", "nrrmc", "npc",
+    "ndscr", "ccc", "bce", "hls", "xhpa", "crxm", "daisy", "xvpa", "sam", "cpix", "lpix", "OTbs",
+    "OTns", "OTnc", "OTMT", "OTNL", "OTpt", "OTxr",
+];
+
+const NUM_NAMES: [&str; 39] = [
+    "cols", "it", "lines", "lm", "xmc", "pb", "vt", "wsl", "nlab", "lh", "lw", "ma", "wnum",
+    "colors", "pairs", "ncv", "bufsz", "spinv", "spinh", "maddr", "mjump", "mcs", "mls", "npins",
+    "orc", "orl", "orhi", "orvi", "cps", "widcs", "btns", "bitwin", "bitype", "UTug", "OTdC",
+    "OTdN", "OTdB", "OTdT", "OTkn",
+];
+
+const STR_NAMES: [&str; 414] = [
+    "cbt", "bel", "cr", "csr", "tbc", "clear", "el", "ed", "hpa", "cmdch", "cup", "cud1", "home",
+    "civis", "cub1", "mrcup", "cnorm", "cuf1", "ll", "cuu1", "cvvis", "dch1", "dl1", "dsl", "hd",
+    "smacs", "blink", "bold", "smcup", "smdc", "dim", "smir", "invis", "prot", "rev", "smso",
+    "smul", "ech", "rmacs", "sgr0", "rmcup", "rmdc", "rmir", "rmso", "rmul", "flash", "ff", "fsl",
+    "is1", "is2", "is3", "if", "ich1", "il1", "ip", "kbs", "ktbc", "kclr", "kctab", "kdch1",
+    "kdl1", "kcud1", "krmir", "kel", "ked", "kf0", "kf1", "kf10", "kf2", "kf3", "kf4", "kf5",
+    "kf6", "kf7", "kf8", "kf9", "khome", "kich1", "kil1", "kcub1", "kll", "knp", "kpp", "kcuf1",
+    "kind", "kri", "khts", "kcuu1", "rmkx", "smkx", "lf0", "lf1", "lf10", "lf2", "lf3", "lf4",
+    "lf5", "lf6", "lf7", "lf8", "lf9", "rmm", "smm", "nel", "pad", "dch", "dl", "cud", "ich",
+    "indn", "il", "cub", "cuf", "rin", "cuu", "pfkey", "pfloc", "pfx", "mc0", "mc4", "mc5", "rep",
+    "rs1", "rs2", "rs3", "rf", "rc", "vpa", "sc", "ind", "ri", "sgr", "hts", "wind", "ht", "tsl",
+    "uc", "hu", "iprog", "ka1", "ka3", "kb2", "kc1", "kc3", "mc5p", "rmp", "acsc", "pln", "kcbt",
+    "smxon", "rmxon", "smam", "rmam", "xonc", "xoffc", "enacs", "smln", "rmln", "kbeg", "kcan",
+    "kclo", "kcmd", "kcpy", "kcrt", "kend", "kent", "kext", "kfnd", "khlp", "kmrk", "kmsg", "kmov",
+    "knxt", "kopn", "kopt", "kprv", "kprt", "krdo", "kref", "krfr", "krpl", "krst", "kres", "ksav",
+    "kspd", "kund", "kBEG", "kCAN", "kCMD", "kCPY", "kCRT", "kDC", "kDL", "kslt", "kEND", "kEOL",
+    "kEXT", "kFND", "kHLP", "kHOM", "kIC", "kLFT", "kMSG", "kMOV", "kNXT", "kOPT", "kPRV", "kPRT",
+    "kRDO", "kRPL", "kRIT", "kRES", "kSAV", "kSPD", "kUND", "rfi", "kf11", "kf12", "kf13", "kf14",
+    "kf15", "kf16", "kf17", "kf18", "kf19", "kf20", "kf21", "kf22", "kf23", "kf24", "kf25", "kf26",
+    "kf27", "kf28", "kf29", "kf30", "kf31", "kf32", "kf33", "kf34", "kf35", "kf36", "kf37", "kf38",
+    "kf39", "kf40", "kf41", "kf42", "kf43", "kf44", "kf45", "kf46", "kf47", "kf48", "kf49", "kf50",
+    "kf51", "kf52", "kf53", "kf54", "kf55", "kf56", "kf57", "kf58", "kf59", "kf60", "kf61", "kf62",
+    "kf63", "el1", "mgc", "smgl", "smgr", "fln", "sclk", "dclk", "rmclk", "cwin", "wingo", "hup",
+    "dial", "qdial", "tone", "pulse", "hook", "pause", "wait", "u0", "u1", "u2", "u3", "u4", "u5",
+    "u6", "u7", "u8", "u9", "op", "oc", "initc", "initp", "scp", "setf", "setb", "cpi", "lpi",
+    "chr", "cvr", "defc", "swidm", "sdrfq", "sitm", "slm", "smicm", "snlq", "snrmq", "sshm",
+    "ssubm", "ssupm", "sum", "rwidm", "ritm", "rlm", "rmicm", "rshm", "rsubm", "rsupm", "rum",
+    "mhpa", "mcud1", "mcub1", "mcuf1", "mvpa", "mcuu1", "porder", "mcud", "mcub", "mcuf", "mcuu",
+    "scs", "smgb", "smgbp", "smglp", "smgrp", "smgt", "smgtp", "sbim", "scsd", "rbim", "rcsd",
+    "subcs", "supcs", "docr", "zerom", "csnm", "kmous", "minfo", "reqmp", "getm", "setaf", "setab",
+    "pfxl", "devt", "csin", "s0ds", "s1ds", "s2ds", "s3ds", "smglr", "smgtb", "birep", "binel",
+    "bicr", "colornm", "defbi", "endbi", "setcolor", "slines", "dispc", "smpch", "rmpch", "smsc",
+    "rmsc", "pctrm", "scesc", "scesa", "ehhlm", "elhlm", "elohlm", "erhlm", "ethlm", "evhlm",
+    "sgr1", "slength", "OTi2", "OTrs", "OTnl", "OTbs", "OTko", "OTma", "OTG2", "OTG3", "OTG1",
+    "OTG4", "OTGR", "OTGL", "OTGU", "OTGD", "OTGH", "OTGV", "OTGC", "meml", "memu", "box1",
+];
+
+#[derive(num_enum::TryFromPrimitive)]
+#[repr(u16)]
+enum TerminfoMagic {
+    /// Original format, 16-bit numbers
+    Magic1 = 0x011a,
+    /// 32-bit numbers
+    Magic2 = 0x021e,
+}
+
+/// Errors reported when parsing a terminfo database
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+pub enum Error {
+    #[error("Unknown magic number")]
+    BadMagic,
+    #[error("String without final NUL")]
+    UnterminatedString,
+    #[error("Unsupported terminfo format")]
+    UnsupportedFormat,
+    #[error("I/O error")]
+    IO(#[from] std::io::Error),
+    #[error("Invalid UTF-8 string")]
+    Utf8(#[from] std::str::Utf8Error),
+}
+
+fn read_u8(reader: &mut impl Read) -> Result<u8, Error> {
+    let mut buffer = [0u8; 1];
+    reader.read_exact(&mut buffer)?;
+    Ok(buffer[0])
+}
+
+fn read_le16(reader: &mut impl Read) -> Result<u16, Error> {
+    let mut buffer = [0u8; 2];
+    reader.read_exact(&mut buffer)?;
+    let value = u16::from_le_bytes(buffer);
+    Ok(value)
+}
+
+fn read_slice<'a>(reader: &mut Cursor<&'a [u8]>, size: usize) -> Result<&'a [u8], Error> {
+    let start = reader.position() as usize;
+    let end = reader.seek(SeekFrom::Current(size as i64))? as usize;
+    let buffer = &reader.get_ref();
+    match buffer.get(start..end) {
+        Some(slice) => Ok(slice),
+        None => Err(Error::UnsupportedFormat),
+    }
+}
+
+fn get_string(string_table: &[u8], offset: usize) -> Result<&[u8], Error> {
+    let Some(string_slice) = string_table.get(offset..) else {
+        return Err(Error::UnsupportedFormat);
+    };
+    if let Some(string_length) = &string_slice.iter().position(|c| *c == b'\0') {
+        Ok(&string_table[offset..offset + string_length])
+    } else {
+        Err(Error::UnterminatedString)
+    }
+}
+
+/// Convert ABSENT and CANCELED to None
+fn check_offset(size: u16) -> Option<usize> {
+    match i32::from(size as i16) {
+        ABSENT_ENTRY => None,
+        CANCELED_ENTRY => None,
+        _ => Some(usize::from(size)),
+    }
+}
+
+/// Skip a byte if needed to ensure 2-byte alignment
+fn align_cursor(reader: &mut Cursor<&[u8]>) -> Result<(), Error> {
+    let position = reader.position();
+    if position & 1 == 1 {
+        reader.seek_relative(1)?;
+    }
+    Ok(())
+}
+
+/// Parsed terminfo entry
+#[derive(Debug)]
+pub struct Terminfo<'a> {
+    pub booleans: BTreeSet<&'a str>,
+    pub numbers: BTreeMap<&'a str, i32>,
+    pub strings: BTreeMap<&'a str, &'a [u8]>,
+    number_size: usize,
+}
+
+impl<'a> Terminfo<'a> {
+    fn new() -> Self {
+        Self {
+            booleans: BTreeSet::default(),
+            numbers: BTreeMap::default(),
+            strings: BTreeMap::default(),
+            number_size: 0,
+        }
+    }
+
+    /// Parse terminfo database from the supplied buffer
+    pub fn parse(buffer: &'a [u8]) -> Result<Self, Error> {
+        let mut terminfo = Self::new();
+        let mut reader = Cursor::new(buffer);
+        terminfo.parse_base(&mut reader)?;
+        match terminfo.parse_extended(&mut reader) {
+            Ok(()) => {}
+            Err(Error::IO(_)) => {} // missing extended data is OK
+            Err(err) => return Err(err),
+        }
+        Ok(terminfo)
+    }
+
+    fn read_number(&self, reader: &mut Cursor<&'a [u8]>) -> Result<Option<i32>, Error> {
+        let value = if self.number_size == 4 {
+            let mut buffer = [0u8; 4];
+            reader.read_exact(&mut buffer)?;
+            i32::from_le_bytes(buffer)
+        } else {
+            let mut buffer = [0u8; 2];
+            reader.read_exact(&mut buffer)?;
+            i32::from(i16::from_le_bytes(buffer))
+        };
+        if value > 0 { Ok(Some(value)) } else { Ok(None) }
+    }
+
+    /// Parse base capabilities
+    fn parse_base(&mut self, mut reader: &mut Cursor<&'a [u8]>) -> Result<(), Error> {
+        let magic = read_le16(&mut reader)?;
+        let name_size = usize::from(read_le16(&mut reader)?);
+        let bool_count = usize::from(read_le16(&mut reader)?);
+        let num_count = usize::from(read_le16(&mut reader)?);
+        let str_count = usize::from(read_le16(&mut reader)?);
+        let str_size = usize::from(read_le16(&mut reader)?);
+
+        self.number_size = match TerminfoMagic::try_from(magic) {
+            Ok(TerminfoMagic::Magic1) => 2,
+            Ok(TerminfoMagic::Magic2) => 4,
+            Err(_) => return Err(Error::BadMagic),
+        };
+
+        if bool_count > BOOL_NAMES.len()
+            || num_count > NUM_NAMES.len()
+            || str_count > STR_NAMES.len()
+        {
+            return Err(Error::UnsupportedFormat);
+        }
+
+        // Skip terminal names/aliases, we are not using them
+        reader.seek_relative(name_size as i64)?;
+
+        for name in BOOL_NAMES.iter().take(bool_count) {
+            let value = read_u8(&mut reader)?;
+            match value {
+                0 => {}
+                1 => {
+                    self.booleans.insert(*name);
+                }
+                _ => return Err(Error::UnsupportedFormat),
+            };
+        }
+
+        align_cursor(reader)?;
+
+        for name in NUM_NAMES.iter().take(num_count) {
+            if let Some(number) = self.read_number(reader)? {
+                self.numbers.insert(*name, number);
+            }
+        }
+
+        let str_offsets = read_slice(reader, std::mem::size_of::<u16>() * str_count)?;
+        let mut str_offsets_reader = Cursor::new(str_offsets);
+
+        let str_table = read_slice(reader, str_size)?;
+
+        for name in STR_NAMES.iter().take(str_count) {
+            let offset = read_le16(&mut str_offsets_reader)?;
+            let Some(offset) = check_offset(offset) else {
+                continue;
+            };
+            let value = get_string(str_table, offset)?;
+            self.strings.insert(*name, value);
+        }
+
+        Ok(())
+    }
+
+    /// Parse extended capabilities
+    fn parse_extended(&mut self, mut reader: &mut Cursor<&'a [u8]>) -> Result<(), Error> {
+        align_cursor(reader)?;
+
+        let bool_count = usize::from(read_le16(&mut reader)?);
+        let num_count = usize::from(read_le16(&mut reader)?);
+        let str_count = usize::from(read_le16(&mut reader)?);
+        let _ext_str_usage = usize::from(read_le16(&mut reader)?);
+        let str_limit = usize::from(read_le16(&mut reader)?);
+
+        let bools = read_slice(reader, bool_count)?;
+        let mut bools_reader = Cursor::new(bools);
+        align_cursor(reader)?;
+
+        let nums = read_slice(reader, self.number_size * num_count)?;
+        let mut nums_reader = Cursor::new(nums);
+
+        let strs = read_slice(reader, std::mem::size_of::<u16>() * str_count)?;
+        let mut strs_reader = Cursor::new(strs);
+
+        let name_count = bool_count + num_count + str_count;
+        let names = read_slice(reader, std::mem::size_of::<u16>() * name_count)?;
+        let mut names_reader = Cursor::new(names);
+
+        let str_table = read_slice(reader, str_limit)?;
+
+        let mut names_base = 0;
+        loop {
+            let Ok(offset) = read_le16(&mut strs_reader) else {
+                break;
+            };
+            let Some(offset) = check_offset(offset) else {
+                continue;
+            };
+            names_base += get_string(str_table, offset)?.len() + 1;
+        }
+
+        let Some(names_table) = &str_table.get(names_base..) else {
+            return Err(Error::UnsupportedFormat);
+        };
+
+        loop {
+            let Ok(value) = read_u8(&mut bools_reader) else {
+                break;
+            };
+            if value != 1 {
+                return Err(Error::UnsupportedFormat);
+            };
+            let Ok(name_offset) = read_le16(&mut names_reader) else {
+                return Err(Error::UnsupportedFormat);
+            };
+            let Some(name_offset) = check_offset(name_offset) else {
+                return Err(Error::UnsupportedFormat);
+            };
+            let name = get_string(names_table, name_offset)?;
+            self.booleans.insert(str::from_utf8(name)?);
+        }
+
+        loop {
+            let Ok(value) = self.read_number(&mut nums_reader) else {
+                break;
+            };
+            let Some(value) = value else {
+                return Err(Error::UnsupportedFormat);
+            };
+            let Ok(name_offset) = read_le16(&mut names_reader) else {
+                return Err(Error::UnsupportedFormat);
+            };
+            let Some(name_offset) = check_offset(name_offset) else {
+                return Err(Error::UnsupportedFormat);
+            };
+            let name = get_string(names_table, name_offset)?;
+            self.numbers.insert(str::from_utf8(name)?, value);
+        }
+
+        strs_reader.set_position(0);
+        loop {
+            let Ok(str_offset) = read_le16(&mut strs_reader) else {
+                break;
+            };
+            let Ok(name_offset) = read_le16(&mut names_reader) else {
+                return Err(Error::UnsupportedFormat);
+            };
+            if let (Some(str_offset), Some(name_offset)) =
+                (check_offset(str_offset), check_offset(name_offset))
+            {
+                let value = get_string(str_table, str_offset)?;
+                let name = get_string(names_table, name_offset)?;
+                self.strings.insert(str::from_utf8(name)?, value);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[repr(i32)]
+    enum NumberType {
+        U16 = 2,
+        U32 = 4,
+    }
+
+    fn make_buffer(number_type: NumberType, add_ext: bool) -> Vec<u8> {
+        let (magic, numbers) = match number_type {
+            NumberType::U16 => (0x011a, &[80, 0xFFFE, 25, 0xFFFF, 0x8000, 82]),
+            NumberType::U32 => (
+                0x021e,
+                &[120, 0xFFFFFFFE, 42, 0xFFFFFFFF, 0x80000000, 82000],
+            ),
+        };
+        let term_name = b"myterm";
+        let booleans = &[1, 0, 0, 0, 1];
+        let strings: &[Option<&[u8]>] = &[None, Some(b"Hello"), None, None, Some(b"World!")];
+        let str_size = strings.iter().flatten().map(|x| x.len() as u16 + 1).sum();
+
+        let mut buffer = vec![];
+        buffer.extend_from_slice(&u16::to_le_bytes(magic));
+        buffer.extend_from_slice(&u16::to_le_bytes(term_name.len() as u16 + 1));
+        buffer.extend_from_slice(&u16::to_le_bytes(booleans.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(numbers.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(strings.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(str_size));
+        buffer.extend_from_slice(term_name);
+        buffer.push(0);
+        buffer.extend_from_slice(booleans);
+        if !buffer.len().is_multiple_of(2) {
+            buffer.push(0);
+        }
+        for number in numbers {
+            match number_type {
+                NumberType::U16 => buffer.extend_from_slice(&u16::to_le_bytes(*number as u16)),
+                NumberType::U32 => buffer.extend_from_slice(&u32::to_le_bytes(*number)),
+            }
+        }
+        let mut offset = 0;
+        for string in strings {
+            if let Some(string) = string {
+                buffer.extend_from_slice(&u16::to_le_bytes(offset));
+                offset += string.len() as u16 + 1;
+            } else {
+                buffer.extend_from_slice(&u16::to_le_bytes(0xFFFF));
+            }
+        }
+        for string in strings.iter().flatten() {
+            buffer.extend_from_slice(string);
+            buffer.push(0);
+        }
+        if add_ext {
+            if !buffer.len().is_multiple_of(2) {
+                buffer.push(0);
+            }
+            buffer.append(&mut make_ext_buffer(number_type));
+        }
+        buffer
+    }
+
+    fn make_ext_buffer(number_type: NumberType) -> Vec<u8> {
+        let booleans: &[&[u8]] = &[b"Curly", b"Italic", b"Semi-bold"];
+        let numbers: &[(&[u8], u32)] = &[(b"Shades", 1100), (b"Variants", 2200)];
+        let strings: &[(&[u8], Option<&[u8]>)] = &[
+            (b"Colors", Some(b"A lot")),
+            (b"Luminocity", Some(b"Positive")),
+            (b"Ideas", None),
+        ];
+
+        let boolean_name_size: u16 = booleans.iter().map(|x| x.len() as u16 + 1).sum();
+        let number_name_size: u16 = numbers.iter().map(|x| x.0.len() as u16 + 1).sum();
+        let string_name_size: u16 = strings.iter().map(|x| x.0.len() as u16 + 1).sum();
+        let string_value_size: u16 = strings
+            .iter()
+            .filter_map(|x| x.1)
+            .map(|x| x.len() as u16 + 1)
+            .sum();
+        let name_size = boolean_name_size + number_name_size + string_name_size;
+        let string_size = name_size + string_value_size;
+
+        let mut buffer = vec![];
+        buffer.extend_from_slice(&u16::to_le_bytes(booleans.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(numbers.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(strings.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(0u16)); // unused `ext_str_usage`
+        buffer.extend_from_slice(&u16::to_le_bytes(string_size));
+
+        // boolean values, align(2), number values, string value offsets
+        // name offsets, string value table, boolean names, number names, string names
+
+        for _boolean in booleans {
+            buffer.push(1);
+        }
+        if !buffer.len().is_multiple_of(2) {
+            buffer.push(0);
+        }
+        for number in numbers {
+            match number_type {
+                NumberType::U16 => buffer.extend_from_slice(&u16::to_le_bytes(number.1 as u16)),
+                NumberType::U32 => buffer.extend_from_slice(&u32::to_le_bytes(number.1)),
+            }
+        }
+        let mut offset = 0;
+        for string in strings {
+            if let Some(string) = string.1 {
+                buffer.extend_from_slice(&u16::to_le_bytes(offset));
+                offset += string.len() as u16 + 1;
+            } else {
+                buffer.extend_from_slice(&u16::to_le_bytes(0xFFFF));
+            }
+        }
+
+        offset = 0;
+        for boolean in booleans {
+            buffer.extend_from_slice(&u16::to_le_bytes(offset));
+            offset += boolean.len() as u16 + 1;
+        }
+        for number in numbers {
+            buffer.extend_from_slice(&u16::to_le_bytes(offset));
+            offset += number.0.len() as u16 + 1;
+        }
+        for string in strings {
+            buffer.extend_from_slice(&u16::to_le_bytes(offset));
+            offset += string.0.len() as u16 + 1;
+        }
+
+        for string in strings {
+            if let Some(string) = string.1 {
+                buffer.extend_from_slice(string);
+                buffer.push(0);
+            }
+        }
+
+        for boolean in booleans {
+            buffer.extend_from_slice(boolean);
+            buffer.push(0);
+        }
+        for number in numbers {
+            buffer.extend_from_slice(number.0);
+            buffer.push(0);
+        }
+        for string in strings {
+            buffer.extend_from_slice(string.0);
+            buffer.push(0);
+        }
+
+        buffer
+    }
+
+    #[test]
+    fn empty_buffer() {
+        let terminfo = Terminfo::parse(b"");
+        assert!(matches!(terminfo.unwrap_err(), Error::IO(_)));
+    }
+
+    #[test]
+    fn base_16_bit() {
+        let buffer = make_buffer(NumberType::U16, false);
+        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        assert!(terminfo.booleans.into_iter().eq(vec!["bw", "xenl"]));
+        assert!(
+            terminfo
+                .numbers
+                .into_iter()
+                .eq(vec![("cols", 80), ("lines", 25), ("pb", 82)])
+        );
+        assert!(terminfo.strings.into_iter().eq(vec![
+            ("bel", b"Hello".as_slice()),
+            ("tbc", b"World!".as_slice())
+        ]));
+    }
+
+    #[test]
+    fn base_32_bit() {
+        let buffer = make_buffer(NumberType::U32, false);
+        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        assert!(terminfo.booleans.into_iter().eq(vec!["bw", "xenl"]));
+        assert!(
+            terminfo
+                .numbers
+                .into_iter()
+                .eq(vec![("cols", 120), ("lines", 42), ("pb", 82000)])
+        );
+        assert!(terminfo.strings.into_iter().eq(vec![
+            ("bel", b"Hello".as_slice()),
+            ("tbc", b"World!".as_slice())
+        ]));
+    }
+
+    #[test]
+    fn bad_magic() {
+        let mut buffer = make_buffer(NumberType::U16, false);
+        buffer[1] = 3;
+        let terminfo = Terminfo::parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::BadMagic));
+    }
+
+    #[test]
+    fn base_truncated() {
+        let mut buffer = make_buffer(NumberType::U16, false);
+        buffer.pop();
+        let terminfo = Terminfo::parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::UnsupportedFormat));
+    }
+
+    #[test]
+    fn base_unterminated_string() {
+        let mut buffer = make_buffer(NumberType::U16, false);
+        let buffer_size = buffer.len();
+        buffer[buffer_size - 1] = b'!';
+        let terminfo = Terminfo::parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::UnterminatedString));
+    }
+
+    #[test]
+    fn extended_16_bit() {
+        let buffer = make_buffer(NumberType::U16, true);
+        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        println!("{terminfo:?}");
+        assert!(terminfo.booleans.into_iter().eq(vec![
+            "Curly",
+            "Italic",
+            "Semi-bold",
+            "bw",
+            "xenl"
+        ]));
+        assert!(terminfo.numbers.into_iter().eq(vec![
+            ("Shades", 1100),
+            ("Variants", 2200),
+            ("cols", 80),
+            ("lines", 25),
+            ("pb", 82)
+        ]));
+        assert!(terminfo.strings.into_iter().eq(vec![
+            ("Colors", b"A lot".as_slice()),
+            ("Luminocity", b"Positive".as_slice()),
+            ("bel", b"Hello".as_slice()),
+            ("tbc", b"World!".as_slice())
+        ]));
+    }
+
+    #[test]
+    fn extended_32_bit() {
+        let buffer = make_buffer(NumberType::U32, true);
+        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        println!("{terminfo:?}");
+        assert!(terminfo.booleans.into_iter().eq(vec![
+            "Curly",
+            "Italic",
+            "Semi-bold",
+            "bw",
+            "xenl"
+        ]));
+        assert!(terminfo.numbers.into_iter().eq(vec![
+            ("Shades", 1100),
+            ("Variants", 2200),
+            ("cols", 120),
+            ("lines", 42),
+            ("pb", 82000)
+        ]));
+        assert!(terminfo.strings.into_iter().eq(vec![
+            ("Colors", b"A lot".as_slice()),
+            ("Luminocity", b"Positive".as_slice()),
+            ("bel", b"Hello".as_slice()),
+            ("tbc", b"World!".as_slice())
+        ]));
+    }
+}
