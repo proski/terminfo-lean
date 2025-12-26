@@ -347,6 +347,8 @@ impl<'a> Terminfo<'a> {
 
 #[cfg(test)]
 mod test {
+    use collection_literals::collection;
+
     use super::*;
 
     #[repr(i32)]
@@ -509,34 +511,44 @@ mod test {
     fn base_16_bit() {
         let buffer = make_buffer(NumberType::U16, false);
         let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
-        assert!(terminfo.booleans.into_iter().eq(vec!["bw", "xenl"]));
-        assert!(
-            terminfo
-                .numbers
-                .into_iter()
-                .eq(vec![("cols", 80), ("lines", 25), ("pb", 82)])
+        assert_eq!(terminfo.booleans, collection!("bw", "xenl"));
+        assert_eq!(
+            terminfo.numbers,
+            collection!(
+                "cols" => 80,
+                "lines" => 25,
+                "pb" => 82,
+            )
         );
-        assert!(terminfo.strings.into_iter().eq(vec![
-            ("bel", b"Hello".as_slice()),
-            ("tbc", b"World!".as_slice())
-        ]));
+        assert_eq!(
+            terminfo.strings,
+            collection!(
+                "bel" => b"Hello".as_slice(),
+                "tbc" => b"World!",
+            )
+        );
     }
 
     #[test]
     fn base_32_bit() {
         let buffer = make_buffer(NumberType::U32, false);
         let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
-        assert!(terminfo.booleans.into_iter().eq(vec!["bw", "xenl"]));
-        assert!(
-            terminfo
-                .numbers
-                .into_iter()
-                .eq(vec![("cols", 120), ("lines", 42), ("pb", 82000)])
+        assert_eq!(terminfo.booleans, collection!("bw", "xenl"));
+        assert_eq!(
+            terminfo.numbers,
+            collection!(
+                "cols" => 120,
+                "lines" => 42,
+                "pb" => 82000,
+            )
         );
-        assert!(terminfo.strings.into_iter().eq(vec![
-            ("bel", b"Hello".as_slice()),
-            ("tbc", b"World!".as_slice())
-        ]));
+        assert_eq!(
+            terminfo.strings,
+            collection!(
+                "bel" => b"Hello".as_slice(),
+                "tbc" => b"World!",
+            )
+        );
     }
 
     #[test]
@@ -568,53 +580,57 @@ mod test {
     fn extended_16_bit() {
         let buffer = make_buffer(NumberType::U16, true);
         let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
-        println!("{terminfo:?}");
-        assert!(terminfo.booleans.into_iter().eq(vec![
-            "Curly",
-            "Italic",
-            "Semi-bold",
-            "bw",
-            "xenl"
-        ]));
-        assert!(terminfo.numbers.into_iter().eq(vec![
-            ("Shades", 1100),
-            ("Variants", 2200),
-            ("cols", 80),
-            ("lines", 25),
-            ("pb", 82)
-        ]));
-        assert!(terminfo.strings.into_iter().eq(vec![
-            ("Colors", b"A lot".as_slice()),
-            ("Luminocity", b"Positive".as_slice()),
-            ("bel", b"Hello".as_slice()),
-            ("tbc", b"World!".as_slice())
-        ]));
+        assert_eq!(
+            terminfo.booleans,
+            collection!("Curly", "Italic", "Semi-bold", "bw", "xenl")
+        );
+        assert_eq!(
+            terminfo.numbers,
+            collection!(
+                "Shades" => 1100,
+                "Variants" => 2200,
+                "cols" => 80,
+                "lines" => 25,
+                "pb" => 82,
+            )
+        );
+        assert_eq!(
+            terminfo.strings,
+            collection!(
+                "Colors" => b"A lot".as_slice(),
+                "Luminocity" => b"Positive",
+                "bel" => b"Hello",
+                "tbc" => b"World!",
+            )
+        );
     }
 
     #[test]
     fn extended_32_bit() {
         let buffer = make_buffer(NumberType::U32, true);
         let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
-        println!("{terminfo:?}");
-        assert!(terminfo.booleans.into_iter().eq(vec![
-            "Curly",
-            "Italic",
-            "Semi-bold",
-            "bw",
-            "xenl"
-        ]));
-        assert!(terminfo.numbers.into_iter().eq(vec![
-            ("Shades", 1100),
-            ("Variants", 2200),
-            ("cols", 120),
-            ("lines", 42),
-            ("pb", 82000)
-        ]));
-        assert!(terminfo.strings.into_iter().eq(vec![
-            ("Colors", b"A lot".as_slice()),
-            ("Luminocity", b"Positive".as_slice()),
-            ("bel", b"Hello".as_slice()),
-            ("tbc", b"World!".as_slice())
-        ]));
+        assert_eq!(
+            terminfo.booleans,
+            collection!("Curly", "Italic", "Semi-bold", "bw", "xenl")
+        );
+        assert_eq!(
+            terminfo.numbers,
+            collection!(
+                "Shades" => 1100,
+                "Variants" => 2200,
+                "cols" => 120,
+                "lines" => 42,
+                "pb" => 82000,
+            )
+        );
+        assert_eq!(
+            terminfo.strings,
+            collection!(
+                "Colors" => b"A lot".as_slice(),
+                "Luminocity" => b"Positive",
+                "bel" => b"Hello",
+                "tbc" => b"World!",
+            )
+        );
     }
 }

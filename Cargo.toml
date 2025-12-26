@@ -26,5 +26,6 @@ too_many_lines = "allow"
 thiserror = "2.0.17"
 
 [dev-dependencies]
+collection_literals = "1.0.3"
 temp-env = "0.3.6"
 tempdir = "0.3.7"
