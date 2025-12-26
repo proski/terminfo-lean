@@ -9,6 +9,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     io::{Cursor, Read, Seek, SeekFrom},
+    mem,
 };
 
 const ABSENT_ENTRY: i32 = -1;
@@ -231,7 +232,7 @@ impl<'a> Terminfo<'a> {
             }
         }
 
-        let str_offsets = read_slice(reader, std::mem::size_of::<u16>() * str_count)?;
+        let str_offsets = read_slice(reader, mem::size_of::<u16>() * str_count)?;
         let mut str_offsets_reader = Cursor::new(str_offsets);
 
         let str_table = read_slice(reader, str_size)?;
@@ -265,11 +266,11 @@ impl<'a> Terminfo<'a> {
         let nums = read_slice(reader, self.number_size * num_count)?;
         let mut nums_reader = Cursor::new(nums);
 
-        let strs = read_slice(reader, std::mem::size_of::<u16>() * str_count)?;
+        let strs = read_slice(reader, mem::size_of::<u16>() * str_count)?;
         let mut strs_reader = Cursor::new(strs);
 
         let name_count = bool_count + num_count + str_count;
-        let names = read_slice(reader, std::mem::size_of::<u16>() * name_count)?;
+        let names = read_slice(reader, mem::size_of::<u16>() * name_count)?;
         let mut names_reader = Cursor::new(names);
 
         let str_table = read_slice(reader, str_limit)?;
