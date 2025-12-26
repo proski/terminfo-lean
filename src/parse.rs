@@ -6,12 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::BTreeMap;
-use std::collections::BTreeSet;
-use std::io::Cursor;
-use std::io::Read;
-use std::io::Seek;
-use std::io::SeekFrom;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::{Cursor, Read, Seek, SeekFrom},
+};
 
 const ABSENT_ENTRY: i32 = -1;
 const CANCELED_ENTRY: i32 = -2;

@@ -6,10 +6,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::env;
-use std::ffi::OsStr;
-use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    env,
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 const TERMINFO_DIRS: &[&str] = &[
     "/etc/terminfo",
@@ -114,9 +115,7 @@ pub fn locate(term_name: impl AsRef<OsStr>) -> Result<PathBuf, Error> {
 
 #[cfg(test)]
 mod test {
-    use std::fs::File;
-    use std::fs::create_dir;
-    use std::fs::exists;
+    use std::fs::{File, create_dir, exists};
 
     use tempdir::TempDir;
 

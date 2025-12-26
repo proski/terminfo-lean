@@ -10,8 +10,7 @@
 
 //! Parameterized string expansion
 
-use std::array::from_fn;
-use std::iter::repeat_n;
+use std::{array::from_fn, iter::repeat_n};
 
 #[derive(Clone, Copy, PartialEq)]
 enum States {
