@@ -322,11 +322,11 @@ impl<'a> Terminfo<'a> {
             let Ok(value) = self.read_number(&mut nums_reader) else {
                 break;
             };
-            let Some(value) = value else {
-                return Err(Error::UnsupportedFormat);
-            };
             let Ok(name_offset) = read_le16(&mut names_reader) else {
                 return Err(Error::UnsupportedFormat);
+            };
+            let Some(value) = value else {
+                continue;
             };
             let Some(name_offset) = check_offset(name_offset) else {
                 return Err(Error::UnsupportedFormat);
