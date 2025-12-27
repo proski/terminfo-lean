@@ -121,7 +121,7 @@ pub fn locate(term_name: impl AsRef<OsStr>) -> Result<PathBuf, Error> {
 mod test {
     use std::fs::{File, create_dir, exists};
 
-    use tempdir::TempDir;
+    use tempfile::tempdir;
 
     use super::*;
 
@@ -148,13 +148,13 @@ mod test {
 
     #[test]
     fn found_standard_layout_terminfo_dirs() {
-        let tempdir = TempDir::new("terminfo-test").unwrap();
-        let tempdir = tempdir.path();
-        let leaf_dir = tempdir.join("n");
+        let temp_dir = tempdir().unwrap();
+        let temp_dir = temp_dir.path();
+        let leaf_dir = temp_dir.join("n");
         let terminfo_file = leaf_dir.join(TERM_NAME);
         create_dir(leaf_dir).unwrap();
         File::create(&terminfo_file).unwrap();
-        let terminfo_dirs = format!("foo:{}:bar", tempdir.display());
+        let terminfo_dirs = format!("foo:{}:bar", temp_dir.display());
 
         temp_env::with_vars(
             [("TERMINFO_DIRS", Some(terminfo_dirs)), ("TERMINFO", None)],
@@ -166,13 +166,13 @@ mod test {
 
     #[test]
     fn found_hex_layout_terminfo_dirs() {
-        let tempdir = TempDir::new("terminfo-test").unwrap();
-        let tempdir = tempdir.path();
-        let leaf_dir = tempdir.join("6e");
+        let temp_dir = tempdir().unwrap();
+        let temp_dir = temp_dir.path();
+        let leaf_dir = temp_dir.join("6e");
         let terminfo_file = leaf_dir.join(TERM_NAME);
         create_dir(leaf_dir).unwrap();
         File::create(&terminfo_file).unwrap();
-        let terminfo_dirs = format!("foo:{}:bar", tempdir.display());
+        let terminfo_dirs = format!("foo:{}:bar", temp_dir.display());
 
         temp_env::with_vars(
             [("TERMINFO_DIRS", Some(terminfo_dirs)), ("TERMINFO", None)],
@@ -184,15 +184,15 @@ mod test {
 
     #[test]
     fn found_standard_layout_terminfo_variable() {
-        let tempdir = TempDir::new("terminfo-test").unwrap();
-        let tempdir = tempdir.path();
-        let leaf_dir = tempdir.join("n");
+        let temp_dir = tempdir().unwrap();
+        let temp_dir = temp_dir.path();
+        let leaf_dir = temp_dir.join("n");
         let terminfo_file = leaf_dir.join(TERM_NAME);
         create_dir(leaf_dir).unwrap();
         File::create(&terminfo_file).unwrap();
 
         temp_env::with_vars(
-            [("TERMINFO_DIRS", None), ("TERMINFO", Some(tempdir))],
+            [("TERMINFO_DIRS", None), ("TERMINFO", Some(temp_dir))],
             || {
                 assert_eq!(locate(TERM_NAME), Ok(terminfo_file));
             },
@@ -201,9 +201,9 @@ mod test {
 
     #[test]
     fn dot_terminfo_standard_layout() {
-        let tempdir = TempDir::new("terminfo-test").unwrap();
-        let tempdir = tempdir.path();
-        let dot_terminfo = tempdir.join(".terminfo");
+        let temp_dir = tempdir().unwrap();
+        let temp_dir = temp_dir.path();
+        let dot_terminfo = temp_dir.join(".terminfo");
         let leaf_dir = dot_terminfo.join("n");
         let terminfo_file = leaf_dir.join(TERM_NAME);
         create_dir(dot_terminfo).unwrap();
@@ -214,7 +214,7 @@ mod test {
             [
                 ("TERMINFO_DIRS", None),
                 ("TERMINFO", None),
-                ("HOME", Some(tempdir)),
+                ("HOME", Some(temp_dir)),
             ],
             || {
                 assert_eq!(locate(TERM_NAME), Ok(terminfo_file));
