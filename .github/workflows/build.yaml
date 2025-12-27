@@ -48,12 +48,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Taplo
+      - name: Install taplo
         uses: taiki-e/install-action@taplo-cli
       - name: Check TOML validity
         run: taplo lint
       - name: Check TOML formatting
         run: taplo fmt --check
+  yaml:
+    name: YAML checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '>=1.21'
+      - name: Install yamlfmt
+        run: go install github.com/google/yamlfmt/cmd/yamlfmt@latest
+      - name: Run yamlfmt
+        run: ~/go/bin/yamlfmt -lint .
   test:
     name: Build and test
     runs-on: ${{ matrix.os }}
