@@ -19,10 +19,16 @@ fn test_all_terminals() {
             };
             for term in leaf {
                 let term_name = term.unwrap().file_name();
+                println!("terminal: {term_name:?}");
                 let terminfo_path = locate(&term_name).unwrap();
                 let terminfo_buffer = fs::read(terminfo_path).unwrap();
-                let terminfo = parse(&terminfo_buffer).unwrap();
-                println!("terminal: {term_name:?}");
+                let terminfo = match parse(&terminfo_buffer) {
+                    Ok(terminfo) => terminfo,
+                    Err(err) => {
+                        println!("Parse error: {err}, terminfo_buffer: {terminfo_buffer:?}");
+                        panic!("Cannot parse terminfo for terminal {term_name:?}");
+                    }
+                };
                 for key in terminfo.booleans {
                     println!("\t{key},");
                 }
