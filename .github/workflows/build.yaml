@@ -43,6 +43,17 @@ jobs:
           components: rustfmt
       - name: Check formatting
         run: cargo fmt --all -- --config group_imports=StdExternalCrate,imports_granularity=Crate --check
+  toml:
+    name: TOML checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Taplo
+        uses: taiki-e/install-action@taplo-cli
+      - name: Check TOML validity
+        run: taplo lint
+      - name: Check TOML formatting
+        run: taplo fmt --check
   test:
     name: Build and test
     runs-on: ${{ matrix.os }}
