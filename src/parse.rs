@@ -98,6 +98,20 @@ pub enum Error {
     Utf8(#[from] std::str::Utf8Error),
 }
 
+/// Parse terminfo database from the supplied buffer
+///
+/// Returns `Terminfo` instance with data populated from the buffers.
+pub fn parse(buffer: &[u8]) -> Result<Terminfo<'_>, Error> {
+    let mut terminfo = Terminfo::new();
+    let mut reader = Cursor::new(buffer);
+    terminfo.parse_base(&mut reader)?;
+    match terminfo.parse_extended(&mut reader) {
+        Ok(()) | Err(Error::IO(_)) => {} // missing extended data is OK
+        Err(err) => return Err(err),
+    }
+    Ok(terminfo)
+}
+
 fn read_u8(reader: &mut impl Read) -> Result<u8, Error> {
     let mut buffer = [0u8; 1];
     reader.read_exact(&mut buffer)?;
@@ -166,20 +180,6 @@ impl<'a> Terminfo<'a> {
             strings: BTreeMap::default(),
             number_size: 0,
         }
-    }
-
-    /// Parse terminfo database from the supplied buffer
-    ///
-    /// Returns the `Terminfo` instance with data populated from the buffers.
-    pub fn parse(buffer: &'a [u8]) -> Result<Self, Error> {
-        let mut terminfo = Self::new();
-        let mut reader = Cursor::new(buffer);
-        terminfo.parse_base(&mut reader)?;
-        match terminfo.parse_extended(&mut reader) {
-            Ok(()) | Err(Error::IO(_)) => {} // missing extended data is OK
-            Err(err) => return Err(err),
-        }
-        Ok(terminfo)
     }
 
     fn read_number(&self, reader: &mut Cursor<&'a [u8]>) -> Result<Option<i32>, Error> {
@@ -510,14 +510,14 @@ mod test {
 
     #[test]
     fn empty_buffer() {
-        let terminfo = Terminfo::parse(b"");
+        let terminfo = parse(b"");
         assert!(matches!(terminfo.unwrap_err(), Error::IO(_)));
     }
 
     #[test]
     fn base_16_bit() {
         let buffer = make_buffer(NumberType::U16, false);
-        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(terminfo.booleans, collection!("bw", "xenl"));
         assert_eq!(
             terminfo.numbers,
@@ -539,7 +539,7 @@ mod test {
     #[test]
     fn base_32_bit() {
         let buffer = make_buffer(NumberType::U32, false);
-        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(terminfo.booleans, collection!("bw", "xenl"));
         assert_eq!(
             terminfo.numbers,
@@ -562,7 +562,7 @@ mod test {
     fn bad_magic() {
         let mut buffer = make_buffer(NumberType::U16, false);
         buffer[1] = 3;
-        let terminfo = Terminfo::parse(buffer.as_slice());
+        let terminfo = parse(buffer.as_slice());
         assert!(matches!(terminfo.unwrap_err(), Error::BadMagic));
     }
 
@@ -570,7 +570,7 @@ mod test {
     fn base_truncated() {
         let mut buffer = make_buffer(NumberType::U16, false);
         buffer.pop();
-        let terminfo = Terminfo::parse(buffer.as_slice());
+        let terminfo = parse(buffer.as_slice());
         assert!(matches!(terminfo.unwrap_err(), Error::UnsupportedFormat));
     }
 
@@ -579,14 +579,14 @@ mod test {
         let mut buffer = make_buffer(NumberType::U16, false);
         let buffer_size = buffer.len();
         buffer[buffer_size - 1] = b'!';
-        let terminfo = Terminfo::parse(buffer.as_slice());
+        let terminfo = parse(buffer.as_slice());
         assert!(matches!(terminfo.unwrap_err(), Error::UnterminatedString));
     }
 
     #[test]
     fn extended_16_bit() {
         let buffer = make_buffer(NumberType::U16, true);
-        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(
             terminfo.booleans,
             collection!("Curly", "Italic", "Semi-bold", "bw", "xenl")
@@ -615,7 +615,7 @@ mod test {
     #[test]
     fn extended_32_bit() {
         let buffer = make_buffer(NumberType::U32, true);
-        let terminfo = Terminfo::parse(buffer.as_slice()).unwrap();
+        let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(
             terminfo.booleans,
             collection!("Curly", "Italic", "Semi-bold", "bw", "xenl")

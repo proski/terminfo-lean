@@ -3,14 +3,14 @@ use std::{env, error::Error, fs, io, io::Write};
 use terminfo_lean::{
     expand::{ExpandContext, Parameter},
     locate::locate,
-    parse::Terminfo,
+    parse::parse,
 };
 
 fn main() -> Result<(), Box<dyn Error>> {
     let term_name = env::var("TERM")?;
     let terminfo_file = locate(term_name)?;
     let terminfo_buffer = fs::read(&terminfo_file)?;
-    let terminfo = Terminfo::parse(&terminfo_buffer)?;
+    let terminfo = parse(&terminfo_buffer)?;
     let Some(cap) = terminfo.strings.get("Smulx") else {
         println!("Your terminal has no styled underscore capability");
         return Ok(());

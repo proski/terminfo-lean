@@ -2,7 +2,7 @@ use std::fs;
 
 use terminfo_lean::{
     locate::{locate, search_directories},
-    parse::Terminfo,
+    parse::parse,
 };
 
 #[test]
@@ -21,7 +21,7 @@ fn test_all_terminals() {
                 let term_name = term.unwrap().file_name();
                 let terminfo_path = locate(&term_name).unwrap();
                 let terminfo_buffer = fs::read(terminfo_path).unwrap();
-                let terminfo = Terminfo::parse(&terminfo_buffer).unwrap();
+                let terminfo = parse(&terminfo_buffer).unwrap();
                 println!("terminal: {term_name:?}");
                 for key in terminfo.booleans {
                     println!("\t{key},");
