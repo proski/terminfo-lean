@@ -98,11 +98,7 @@ jobs:
       - name: Build
         run: cargo build --all-targets
       - name: Run tests
-        if: matrix.os != 'macos-latest'
         run: cargo test
-      - name: Run unit tests
-        if: matrix.os == 'macos-latest'
-        run: cargo test --lib
   doc:
     name: Documentation
     runs-on: ubuntu-latest
