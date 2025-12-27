@@ -90,6 +90,9 @@ pub enum Error {
     /// Unexpected condition, probably invalid terminfo database
     #[error("Unsupported terminfo format")]
     UnsupportedFormat,
+    /// Boolean value not 0 or 1, probably invalid terminfo database
+    #[error("Invalid boolean value {0}")]
+    InvalidBooleanValue(u8),
     /// Input/output error, probably truncated terminfo database
     #[error("I/O error")]
     IO(#[from] std::io::Error),
@@ -223,12 +226,11 @@ impl<'a> Terminfo<'a> {
         for name in BOOL_NAMES.iter().take(bool_count) {
             let value = read_u8(&mut reader)?;
             match value {
-                0 => {}
-                1 => {
-                    self.booleans.insert(*name);
-                }
-                _ => return Err(Error::UnsupportedFormat),
+                0 => continue,
+                1 => {}
+                value => return Err(Error::InvalidBooleanValue(value)),
             }
+            self.booleans.insert(*name);
         }
 
         align_cursor(reader)?;
@@ -301,12 +303,14 @@ impl<'a> Terminfo<'a> {
             let Ok(value) = read_u8(&mut bools_reader) else {
                 break;
             };
-            if value != 1 {
-                return Err(Error::UnsupportedFormat);
-            }
             let Ok(name_offset) = read_le16(&mut names_reader) else {
                 return Err(Error::UnsupportedFormat);
             };
+            match value {
+                0 => continue,
+                1 => {}
+                value => return Err(Error::InvalidBooleanValue(value)),
+            }
             let Some(name_offset) = check_offset(name_offset) else {
                 return Err(Error::UnsupportedFormat);
             };
