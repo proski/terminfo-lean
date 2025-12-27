@@ -6,6 +6,7 @@ on:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
+  workflow_dispatch:
 jobs:
   audit:
     name: Security Audit
@@ -24,4 +25,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Cargo Deny
-        uses: EmbarkStudios/cargo-deny-action@v1
+        uses: EmbarkStudios/cargo-deny-action@v2
