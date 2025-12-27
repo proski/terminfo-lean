@@ -6,30 +6,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Terminfo parsing library with simple API and minimal dependencies
+//! # Terminfo parsing library with simple API and minimal dependencies
 //!
-//! This crate provides facilities to
+//! ## Provided Functionality
 //!
-//! * find the terminfo database for the given terminal
-//! * parse the terminfo database and
-//! * expand capabilities with parameters.
+//! * Find the terminfo database for the given terminal.
+//! * Parse the terminfo database.
+//! * Expand capabilities with parameters.
 //!
-//! Features:
+//! ## Why another terminfo library?
 //!
-//! * full support for extended capabilities
-//! * simple API
-//! * extensive unit test coverage
-//!
-//! Why another terminfo library?
-//!
-//! * MIT + Apache 2.0 license (no obscenities or obscure licenses)
-//! * minimal dependencies (`thiserror` only)
-//! * truly lean - no termcap, no Windows console, no unrelated stuff
+//! * Full support for extended capabilities
+//! * MIT + Apache 2.0 license (no obscene or obscure licenses)
+//! * Extensive unit test coverage
+//! * Minimal dependencies (`thiserror` only)
+//! * Lean code - no termcap, no Windows console, no unrelated stuff
 //! * UTF-8 is only used for capability names
 //! * 8-bit clean - string capabilities are byte slices
-//! * minimal memory allocations
+//! * Minimal memory allocations
 //!
-//! Credits
+//! ## Credits
 //!
 //! The capability expansion code is based on the `term` crate with
 //! significant changes.

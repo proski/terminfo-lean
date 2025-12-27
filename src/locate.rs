@@ -57,7 +57,7 @@ fn find_in_directory(term_name: &OsStr, dir: &Path) -> Result<PathBuf, Error> {
     Err(Error::FileNotFound)
 }
 
-/// Find all directories to be searched for terminfo files
+/// Returns all directories that are searched for terminfo files
 ///
 /// This function does not attempt to verify if the directories to be searched actually exist.
 ///

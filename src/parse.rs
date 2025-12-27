@@ -100,7 +100,7 @@ pub enum Error {
 
 /// Parse terminfo database from the supplied buffer
 ///
-/// Returns `Terminfo` instance with data populated from the buffers.
+/// Returns `Terminfo` instance with data populated from the buffer.
 pub fn parse(buffer: &[u8]) -> Result<Terminfo<'_>, Error> {
     let mut terminfo = Terminfo::new();
     let mut reader = Cursor::new(buffer);
