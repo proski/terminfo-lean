@@ -37,7 +37,7 @@ enum FormatState {
     Precision,
 }
 
-/// Types of parameters a capability can use
+/// Parameter that can be used for capability expansion
 #[derive(Clone)]
 pub enum Parameter {
     Number(i32),
