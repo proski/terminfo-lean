@@ -1,6 +1,9 @@
 use std::fs;
 
-use terminfo_lean::{Terminfo, locate, search_directories};
+use terminfo_lean::{
+    locate::{locate, search_directories},
+    parse::Terminfo,
+};
 
 #[test]
 fn test_all_terminals() {
