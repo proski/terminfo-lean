@@ -362,55 +362,124 @@ mod test {
 
     use super::*;
 
-    #[repr(i32)]
     #[derive(Clone, Copy, PartialEq)]
     enum NumberType {
-        U16 = 2,
-        U32 = 4,
+        U16,
+        U32,
     }
 
-    fn make_buffer(number_type: NumberType, add_ext: bool) -> Vec<u8> {
-        let (magic, numbers) = match number_type {
-            NumberType::U16 => (0x011a, &[80, 0xFFFE, 25, 0xFFFF, 0x8000, 82]),
-            NumberType::U32 => (
-                0x021e,
-                &[120, 0xFFFF_FFFE, 42, 0xFFFF_FFFF, 0x8000_0000, 82000],
-            ),
+    #[derive(Clone, PartialEq)]
+    enum StringValue {
+        Present(Vec<u8>),
+        Absent,
+        Canceled,
+    }
+
+    // Allow conversion from `StringValue` to `Option`
+    impl<'a> From<&'a StringValue> for Option<&'a [u8]> {
+        fn from(value: &'a StringValue) -> Self {
+            match value {
+                StringValue::Present(value) => Some(value),
+                _ => None,
+            }
+        }
+    }
+
+    // Allow iteration over `StringValue` by converting it to `Option`
+    impl<'a> IntoIterator for &'a StringValue {
+        type Item = &'a [u8];
+        type IntoIter = std::option::IntoIter<Self::Item>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            Option::<&'a [u8]>::from(self).into_iter()
+        }
+    }
+
+    impl<const N: usize> From<&[u8; N]> for StringValue {
+        fn from(value: &[u8; N]) -> Self {
+            Self::Present(value.to_vec())
+        }
+    }
+
+    // Size of byte string in memory with terminating NUL
+    fn memlen(byte_string: &[u8]) -> u16 {
+        byte_string.len() as u16 + 1
+    }
+
+    struct DataSet {
+        number_type: NumberType,
+        term_name: Vec<u8>,
+        base_booleans: Vec<u8>,
+        base_numbers: Vec<i32>,
+        base_strings: Vec<StringValue>,
+        ext_booleans: Vec<(&'static [u8], u8)>,
+        ext_numbers: Vec<(&'static [u8], i32)>,
+        ext_strings: Vec<(&'static [u8], StringValue)>,
+    }
+
+    impl Default for DataSet {
+        fn default() -> Self {
+            Self {
+                number_type: NumberType::U16,
+                term_name: b"myterm".to_vec(),
+                base_booleans: vec![1, 0, 0, 0, 1],
+                base_numbers: vec![80, -2, 25, -1, -10, 0x10005],
+                base_strings: vec![
+                    StringValue::Absent,
+                    StringValue::from(b"Hello"),
+                    StringValue::Canceled,
+                    StringValue::Absent,
+                    StringValue::from(b"World!"),
+                ],
+                ext_booleans: vec![(b"Curly", 1), (b"Italic", 1), (b"Semi-bold", 1)],
+                ext_numbers: vec![(b"Shades", 1100), (b"Variants", 2200)],
+                ext_strings: vec![
+                    (b"Colors", StringValue::from(b"A lot")),
+                    (b"Luminosity", StringValue::from(b"Positive")),
+                    (b"Ideas", StringValue::Absent),
+                ],
+            }
+        }
+    }
+
+    fn make_buffer(data_set: &DataSet, add_ext: bool) -> Vec<u8> {
+        let magic = match data_set.number_type {
+            NumberType::U16 => 0x011a,
+            NumberType::U32 => 0x021e,
         };
-        let term_name = b"myterm";
-        let booleans = &[1, 0, 0, 0, 1];
-        let strings: &[Option<&[u8]>] = &[None, Some(b"Hello"), None, None, Some(b"World!")];
-        let str_size = strings.iter().flatten().map(|x| x.len() as u16 + 1).sum();
+        let str_size = data_set.base_strings.iter().flatten().map(memlen).sum();
 
         let mut buffer = vec![];
         buffer.extend_from_slice(&u16::to_le_bytes(magic));
-        buffer.extend_from_slice(&u16::to_le_bytes(term_name.len() as u16 + 1));
-        buffer.extend_from_slice(&u16::to_le_bytes(booleans.len() as u16));
-        buffer.extend_from_slice(&u16::to_le_bytes(numbers.len() as u16));
-        buffer.extend_from_slice(&u16::to_le_bytes(strings.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(memlen(&data_set.term_name)));
+        buffer.extend_from_slice(&u16::to_le_bytes(data_set.base_booleans.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(data_set.base_numbers.len() as u16));
+        buffer.extend_from_slice(&u16::to_le_bytes(data_set.base_strings.len() as u16));
         buffer.extend_from_slice(&u16::to_le_bytes(str_size));
-        buffer.extend_from_slice(term_name);
+        buffer.extend_from_slice(&data_set.term_name);
         buffer.push(0);
-        buffer.extend_from_slice(booleans);
+        buffer.extend_from_slice(&data_set.base_booleans);
         if !buffer.len().is_multiple_of(2) {
             buffer.push(0);
         }
-        for number in numbers {
-            match number_type {
+        for number in &data_set.base_numbers {
+            match data_set.number_type {
                 NumberType::U16 => buffer.extend_from_slice(&u16::to_le_bytes(*number as u16)),
-                NumberType::U32 => buffer.extend_from_slice(&u32::to_le_bytes(*number)),
+                NumberType::U32 => buffer.extend_from_slice(&u32::to_le_bytes(*number as u32)),
             }
         }
         let mut offset = 0;
-        for string in strings {
-            if let Some(string) = string {
-                buffer.extend_from_slice(&u16::to_le_bytes(offset));
-                offset += string.len() as u16 + 1;
-            } else {
-                buffer.extend_from_slice(&u16::to_le_bytes(0xFFFF));
+        for string in &data_set.base_strings {
+            match string {
+                StringValue::Present(string) => {
+                    buffer.extend_from_slice(&u16::to_le_bytes(offset));
+                    offset += memlen(string);
+                }
+                StringValue::Absent => buffer.extend_from_slice(&u16::to_le_bytes(0xffff)),
+                StringValue::Canceled => buffer.extend_from_slice(&u16::to_le_bytes(0xfffe)),
             }
         }
-        for string in strings.iter().flatten() {
+        for string in data_set.base_strings.iter().flatten() {
             buffer.extend_from_slice(string);
             buffer.push(0);
         }
@@ -418,86 +487,83 @@ mod test {
             if !buffer.len().is_multiple_of(2) {
                 buffer.push(0);
             }
-            buffer.append(&mut make_ext_buffer(number_type));
+            buffer.append(&mut make_ext_buffer(data_set));
         }
         buffer
     }
 
-    fn make_ext_buffer(number_type: NumberType) -> Vec<u8> {
-        let booleans: &[&[u8]] = &[b"Curly", b"Italic", b"Semi-bold"];
-        let numbers: &[(&[u8], u32)] = &[(b"Shades", 1100), (b"Variants", 2200)];
-        let strings: &[(&[u8], Option<&[u8]>)] = &[
-            (b"Colors", Some(b"A lot")),
-            (b"Luminocity", Some(b"Positive")),
-            (b"Ideas", None),
-        ];
+    fn make_ext_buffer(data_set: &DataSet) -> Vec<u8> {
+        let booleans = &data_set.ext_booleans;
+        let numbers = &data_set.ext_numbers;
+        let strings = &data_set.ext_strings;
 
-        let boolean_name_size: u16 = booleans.iter().map(|x| x.len() as u16 + 1).sum();
-        let number_name_size: u16 = numbers.iter().map(|x| x.0.len() as u16 + 1).sum();
-        let string_name_size: u16 = strings.iter().map(|x| x.0.len() as u16 + 1).sum();
-        let string_value_size: u16 = strings
-            .iter()
-            .filter_map(|x| x.1)
-            .map(|x| x.len() as u16 + 1)
-            .sum();
+        let boolean_name_size: u16 = booleans.iter().map(|x| memlen(x.0)).sum();
+        let number_name_size: u16 = numbers.iter().map(|x| memlen(x.0)).sum();
+        let string_name_size: u16 = strings.iter().map(|x| memlen(x.0)).sum();
+        let string_value_size: u16 = strings.iter().flat_map(|x| &x.1).map(memlen).sum();
         let name_size = boolean_name_size + number_name_size + string_name_size;
         let string_size = name_size + string_value_size;
 
         let mut buffer = vec![];
+
+        // The layout is:
+        //
+        // extended header, boolean values, align(2), number values, string value offsets,
+        // name offsets, string values, boolean names, number names, string names.
+
         buffer.extend_from_slice(&u16::to_le_bytes(booleans.len() as u16));
         buffer.extend_from_slice(&u16::to_le_bytes(numbers.len() as u16));
         buffer.extend_from_slice(&u16::to_le_bytes(strings.len() as u16));
         buffer.extend_from_slice(&u16::to_le_bytes(0u16)); // unused `ext_str_usage`
         buffer.extend_from_slice(&u16::to_le_bytes(string_size));
 
-        // boolean values, align(2), number values, string value offsets
-        // name offsets, string value table, boolean names, number names, string names
-
-        for _boolean in booleans {
-            buffer.push(1);
+        for boolean in booleans {
+            buffer.push(boolean.1);
         }
         if !buffer.len().is_multiple_of(2) {
             buffer.push(0);
         }
         for number in numbers {
-            match number_type {
+            match data_set.number_type {
                 NumberType::U16 => buffer.extend_from_slice(&u16::to_le_bytes(number.1 as u16)),
-                NumberType::U32 => buffer.extend_from_slice(&u32::to_le_bytes(number.1)),
+                NumberType::U32 => buffer.extend_from_slice(&u32::to_le_bytes(number.1 as u32)),
             }
         }
         let mut offset = 0;
         for string in strings {
-            if let Some(string) = string.1 {
-                buffer.extend_from_slice(&u16::to_le_bytes(offset));
-                offset += string.len() as u16 + 1;
-            } else {
-                buffer.extend_from_slice(&u16::to_le_bytes(0xFFFF));
+            match &string.1 {
+                StringValue::Present(string) => {
+                    buffer.extend_from_slice(&u16::to_le_bytes(offset));
+                    offset += memlen(string);
+                }
+                StringValue::Absent => buffer.extend_from_slice(&u16::to_le_bytes(0xffff)),
+                StringValue::Canceled => buffer.extend_from_slice(&u16::to_le_bytes(0xfffe)),
             }
         }
 
         offset = 0;
         for boolean in booleans {
             buffer.extend_from_slice(&u16::to_le_bytes(offset));
-            offset += boolean.len() as u16 + 1;
+            offset += memlen(boolean.0);
         }
         for number in numbers {
             buffer.extend_from_slice(&u16::to_le_bytes(offset));
-            offset += number.0.len() as u16 + 1;
+            offset += memlen(number.0);
         }
         for string in strings {
             buffer.extend_from_slice(&u16::to_le_bytes(offset));
-            offset += string.0.len() as u16 + 1;
+            offset += memlen(string.0);
         }
 
         for string in strings {
-            if let Some(string) = string.1 {
+            if let StringValue::Present(string) = &string.1 {
                 buffer.extend_from_slice(string);
                 buffer.push(0);
             }
         }
 
         for boolean in booleans {
-            buffer.extend_from_slice(boolean);
+            buffer.extend_from_slice(boolean.0);
             buffer.push(0);
         }
         for number in numbers {
@@ -520,7 +586,8 @@ mod test {
 
     #[test]
     fn base_16_bit() {
-        let buffer = make_buffer(NumberType::U16, false);
+        let data_set = DataSet::default();
+        let buffer = make_buffer(&data_set, false);
         let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(terminfo.booleans, collection!("bw", "xenl"));
         assert_eq!(
@@ -528,7 +595,7 @@ mod test {
             collection!(
                 "cols" => 80,
                 "lines" => 25,
-                "pb" => 82,
+                "pb" => 5,
             )
         );
         assert_eq!(
@@ -542,15 +609,21 @@ mod test {
 
     #[test]
     fn base_32_bit() {
-        let buffer = make_buffer(NumberType::U32, false);
+        let mut data_set = DataSet {
+            number_type: NumberType::U32,
+            ..Default::default()
+        };
+        data_set.base_numbers[5] = 0x7fff_ffff;
+
+        let buffer = make_buffer(&data_set, false);
         let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(terminfo.booleans, collection!("bw", "xenl"));
         assert_eq!(
             terminfo.numbers,
             collection!(
-                "cols" => 120,
-                "lines" => 42,
-                "pb" => 82000,
+                "cols" => 80,
+                "lines" => 25,
+                "pb" => 0x7fff_ffff,
             )
         );
         assert_eq!(
@@ -564,7 +637,8 @@ mod test {
 
     #[test]
     fn bad_magic() {
-        let mut buffer = make_buffer(NumberType::U16, false);
+        let data_set = DataSet::default();
+        let mut buffer = make_buffer(&data_set, false);
         buffer[1] = 3;
         let terminfo = parse(buffer.as_slice());
         assert!(matches!(terminfo.unwrap_err(), Error::BadMagic));
@@ -572,7 +646,8 @@ mod test {
 
     #[test]
     fn base_truncated() {
-        let mut buffer = make_buffer(NumberType::U16, false);
+        let data_set = DataSet::default();
+        let mut buffer = make_buffer(&data_set, false);
         buffer.pop();
         let terminfo = parse(buffer.as_slice());
         assert!(matches!(terminfo.unwrap_err(), Error::UnsupportedFormat));
@@ -580,7 +655,8 @@ mod test {
 
     #[test]
     fn base_unterminated_string() {
-        let mut buffer = make_buffer(NumberType::U16, false);
+        let data_set = DataSet::default();
+        let mut buffer = make_buffer(&data_set, false);
         let buffer_size = buffer.len();
         buffer[buffer_size - 1] = b'!';
         let terminfo = parse(buffer.as_slice());
@@ -589,7 +665,8 @@ mod test {
 
     #[test]
     fn extended_16_bit() {
-        let buffer = make_buffer(NumberType::U16, true);
+        let data_set = DataSet::default();
+        let buffer = make_buffer(&data_set, true);
         let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(
             terminfo.booleans,
@@ -602,14 +679,14 @@ mod test {
                 "Variants" => 2200,
                 "cols" => 80,
                 "lines" => 25,
-                "pb" => 82,
+                "pb" => 5,
             )
         );
         assert_eq!(
             terminfo.strings,
             collection!(
                 "Colors" => b"A lot".as_slice(),
-                "Luminocity" => b"Positive",
+                "Luminosity" => b"Positive",
                 "bel" => b"Hello",
                 "tbc" => b"World!",
             )
@@ -618,7 +695,13 @@ mod test {
 
     #[test]
     fn extended_32_bit() {
-        let buffer = make_buffer(NumberType::U32, true);
+        let mut data_set = DataSet {
+            number_type: NumberType::U32,
+            ..Default::default()
+        };
+        data_set.base_numbers[5] = 0x7fff_ffff;
+
+        let buffer = make_buffer(&data_set, true);
         let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(
             terminfo.booleans,
@@ -629,16 +712,16 @@ mod test {
             collection!(
                 "Shades" => 1100,
                 "Variants" => 2200,
-                "cols" => 120,
-                "lines" => 42,
-                "pb" => 82000,
+                "cols" => 80,
+                "lines" => 25,
+                "pb" => 0x7fff_ffff,
             )
         );
         assert_eq!(
             terminfo.strings,
             collection!(
                 "Colors" => b"A lot".as_slice(),
-                "Luminocity" => b"Positive",
+                "Luminosity" => b"Positive",
                 "bel" => b"Hello",
                 "tbc" => b"World!",
             )
