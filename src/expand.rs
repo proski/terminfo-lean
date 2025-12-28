@@ -609,7 +609,7 @@ mod test {
 
     #[test]
     fn multiple_parameters() {
-        let mut expand_context = ExpandContext::new();
+        let mut expand_context = ExpandContext::default();
         assert_str(
             expand_context.expand(
                 b"%p1%p2%p3%p4%p5%p6%p7%p8%p9%d%d%d%d%d%s%s%s%d",
