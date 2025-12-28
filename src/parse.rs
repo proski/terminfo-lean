@@ -24,14 +24,14 @@ const BOOL_NAMES: [&str; 44] = [
     "OTns", "OTnc", "OTMT", "OTNL", "OTpt", "OTxr",
 ];
 
-const NUM_NAMES: [&str; 39] = [
+const NUMBER_NAMES: [&str; 39] = [
     "cols", "it", "lines", "lm", "xmc", "pb", "vt", "wsl", "nlab", "lh", "lw", "ma", "wnum",
     "colors", "pairs", "ncv", "bufsz", "spinv", "spinh", "maddr", "mjump", "mcs", "mls", "npins",
     "orc", "orl", "orhi", "orvi", "cps", "widcs", "btns", "bitwin", "bitype", "UTug", "OTdC",
     "OTdN", "OTdB", "OTdT", "OTkn",
 ];
 
-const STR_NAMES: [&str; 414] = [
+const STRING_NAMES: [&str; 414] = [
     "cbt", "bel", "cr", "csr", "tbc", "clear", "el", "ed", "hpa", "cmdch", "cup", "cud1", "home",
     "civis", "cub1", "mrcup", "cnorm", "cuf1", "ll", "cuu1", "cvvis", "dch1", "dl1", "dsl", "hd",
     "smacs", "blink", "bold", "smcup", "smdc", "dim", "smir", "invis", "prot", "rev", "smso",
@@ -214,8 +214,8 @@ impl<'a> Terminfo<'a> {
         };
 
         if bool_count > BOOL_NAMES.len()
-            || num_count > NUM_NAMES.len()
-            || str_count > STR_NAMES.len()
+            || num_count > NUMBER_NAMES.len()
+            || str_count > STRING_NAMES.len()
         {
             return Err(Error::UnsupportedFormat);
         }
@@ -235,7 +235,7 @@ impl<'a> Terminfo<'a> {
 
         align_cursor(reader)?;
 
-        for name in NUM_NAMES.iter().take(num_count) {
+        for name in NUMBER_NAMES.iter().take(num_count) {
             if let Some(number) = self.read_number(reader)? {
                 self.numbers.insert(*name, number);
             }
@@ -246,7 +246,7 @@ impl<'a> Terminfo<'a> {
 
         let str_table = read_slice(reader, str_size)?;
 
-        for name in STR_NAMES.iter().take(str_count) {
+        for name in STRING_NAMES.iter().take(str_count) {
             let offset = read_le16(&mut str_offsets_reader)?;
             let Some(offset) = check_offset(offset) else {
                 continue;
@@ -431,12 +431,17 @@ mod test {
                     StringValue::Absent,
                     StringValue::from(b"World!"),
                 ],
-                ext_booleans: vec![(b"Curly", 1), (b"Italic", 1), (b"Semi-bold", 1)],
+                ext_booleans: vec![
+                    (b"Curly", 1),
+                    (b"Italic", 1),
+                    (b"Invisible", 0),
+                    (b"Semi-bold", 1),
+                ],
                 ext_numbers: vec![(b"Shades", 1100), (b"Variants", 2200)],
                 ext_strings: vec![
                     (b"Colors", StringValue::from(b"A lot")),
-                    (b"Luminosity", StringValue::from(b"Positive")),
                     (b"Ideas", StringValue::Absent),
+                    (b"Luminosity", StringValue::from(b"Positive")),
                 ],
             }
         }
@@ -664,6 +669,73 @@ mod test {
     }
 
     #[test]
+    fn base_bad_string_offset() {
+        let data_set = DataSet {
+            term_name: b"123".to_vec(),
+            base_booleans: vec![],
+            base_numbers: vec![],
+            base_strings: vec![StringValue::from(b"Hello")],
+            ..Default::default()
+        };
+        let mut buffer = make_buffer(&data_set, false);
+        let mut offset = 6 * mem::size_of::<u16>();
+        offset += &data_set.term_name.len() + 1;
+        buffer[offset] = 0xff;
+        let terminfo = parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::UnsupportedFormat));
+    }
+
+    #[test]
+    fn base_bad_boolean_count() {
+        let data_set = DataSet::default();
+        let mut buffer = make_buffer(&data_set, false);
+        let offset = 2 * mem::size_of::<u16>();
+        let patch = u16::to_le_bytes(BOOL_NAMES.len() as u16 + 1);
+        buffer[offset] = patch[0];
+        buffer[offset + 1] = patch[1];
+        let terminfo = parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::UnsupportedFormat));
+    }
+
+    #[test]
+    fn base_bad_number_count() {
+        let data_set = DataSet::default();
+        let mut buffer = make_buffer(&data_set, false);
+        let offset = 3 * mem::size_of::<u16>();
+        let patch = u16::to_le_bytes(NUMBER_NAMES.len() as u16 + 1);
+        buffer[offset] = patch[0];
+        buffer[offset + 1] = patch[1];
+        let terminfo = parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::UnsupportedFormat));
+    }
+
+    #[test]
+    fn base_bad_string_count() {
+        let data_set = DataSet::default();
+        let mut buffer = make_buffer(&data_set, false);
+        let offset = 4 * mem::size_of::<u16>();
+        let patch = u16::to_le_bytes(STRING_NAMES.len() as u16 + 1);
+        buffer[offset] = patch[0];
+        buffer[offset + 1] = patch[1];
+        let terminfo = parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::UnsupportedFormat));
+    }
+
+    #[test]
+    fn base_bad_boolean() {
+        let data_set = DataSet {
+            base_booleans: vec![1, 0, 42],
+            ..Default::default()
+        };
+        let buffer = make_buffer(&data_set, false);
+        let terminfo = parse(buffer.as_slice());
+        assert!(matches!(
+            terminfo.unwrap_err(),
+            Error::InvalidBooleanValue(42)
+        ));
+    }
+
+    #[test]
     fn extended_16_bit() {
         let data_set = DataSet::default();
         let buffer = make_buffer(&data_set, true);
@@ -726,5 +798,29 @@ mod test {
                 "tbc" => b"World!",
             )
         );
+    }
+
+    #[test]
+    fn extended_unterminated_string() {
+        let data_set = DataSet::default();
+        let mut buffer = make_buffer(&data_set, true);
+        let buffer_size = buffer.len();
+        buffer[buffer_size - 1] = b'!';
+        let terminfo = parse(buffer.as_slice());
+        assert!(matches!(terminfo.unwrap_err(), Error::UnterminatedString));
+    }
+
+    #[test]
+    fn extended_bad_boolean() {
+        let data_set = DataSet {
+            ext_booleans: vec![(b"True", 1), (b"False", 0), (b"Incorrect", 67)],
+            ..Default::default()
+        };
+        let buffer = make_buffer(&data_set, true);
+        let terminfo = parse(buffer.as_slice());
+        assert!(matches!(
+            terminfo.unwrap_err(),
+            Error::InvalidBooleanValue(67)
+        ));
     }
 }
