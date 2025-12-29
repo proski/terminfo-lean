@@ -1,3 +1,6 @@
+// Don't count this test towards test coverage, as it's system specific.
+#![cfg(not(coverage))]
+
 use std::fs;
 
 use terminfo_lean::{
@@ -5,6 +8,8 @@ use terminfo_lean::{
     parse::parse,
 };
 
+// Find terminfo database for every terminal and parse it.
+// Print statements are useful to debug failures.
 #[test]
 fn test_all_terminals() {
     let dirs = search_directories();
