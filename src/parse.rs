@@ -160,7 +160,7 @@ fn check_offset(size: u16) -> Option<usize> {
 /// Skip a byte if needed to ensure 2-byte alignment
 fn align_cursor(reader: &mut Cursor<&[u8]>) -> Result<(), Error> {
     let position = reader.position();
-    if position & 1 == 1 {
+    if !position.is_multiple_of(2) {
         reader.seek_relative(1)?;
     }
     Ok(())
@@ -644,6 +644,35 @@ mod test {
     }
 
     #[test]
+    fn base_alignment() {
+        let data_set = DataSet {
+            number_type: NumberType::U32,
+            term_name: b"1234".to_vec(),
+            base_booleans: vec![1, 1],
+            ..Default::default()
+        };
+
+        let buffer = make_buffer(&data_set, false);
+        let terminfo = parse(buffer.as_slice()).unwrap();
+        assert_eq!(terminfo.booleans, collection!("am", "bw"));
+        assert_eq!(
+            terminfo.numbers,
+            collection!(
+                "cols" => 80,
+                "lines" => 25,
+                "pb" => 0x10005,
+            )
+        );
+        assert_eq!(
+            terminfo.strings,
+            collection!(
+                "bel" => b"Hello".as_slice(),
+                "csr" => b"World!",
+            )
+        );
+    }
+
+    #[test]
     fn bad_magic() {
         let data_set = DataSet::default();
         let mut buffer = make_buffer(&data_set, false);
@@ -776,6 +805,41 @@ mod test {
         assert_eq!(
             terminfo.booleans,
             collection!("Primary", "Secondary", "Tertiary", "bw", "xenl")
+        );
+        assert_eq!(
+            terminfo.numbers,
+            collection!(
+                "Overflowing" => 0x10007,
+                "Simple" => 1100,
+                "cols" => 80,
+                "lines" => 25,
+                "pb" => 0x10005,
+            )
+        );
+        assert_eq!(
+            terminfo.strings,
+            collection!(
+                "Final" => b"Bye".as_slice(),
+                "Present" => b"Indeed",
+                "bel" => b"Hello",
+                "csr" => b"World!",
+            )
+        );
+    }
+
+    #[test]
+    fn extended_alignment() {
+        let data_set = DataSet {
+            number_type: NumberType::U32,
+            ext_booleans: vec![(b"One", 1), (b"Two", 1), (b"Three", 1)],
+            ..Default::default()
+        };
+
+        let buffer = make_buffer(&data_set, true);
+        let terminfo = parse(buffer.as_slice()).unwrap();
+        assert_eq!(
+            terminfo.booleans,
+            collection!("One", "Two", "Three", "bw", "xenl")
         );
         assert_eq!(
             terminfo.numbers,
