@@ -428,20 +428,24 @@ mod test {
                     StringValue::Absent,
                     StringValue::from(b"Hello"),
                     StringValue::Canceled,
-                    StringValue::Absent,
                     StringValue::from(b"World!"),
                 ],
                 ext_booleans: vec![
-                    (b"Curly", 1),
-                    (b"Italic", 1),
-                    (b"Invisible", 0),
-                    (b"Semi-bold", 1),
+                    (b"Primary", 1),
+                    (b"Unset", 0),
+                    (b"Secondary", 1),
+                    (b"Tertiary", 1),
                 ],
-                ext_numbers: vec![(b"Shades", 1100), (b"Variants", 2200)],
+                ext_numbers: vec![
+                    (b"Simple", 1100),
+                    (b"Overflowing", 0x10007),
+                    (b"Negative", -20),
+                ],
                 ext_strings: vec![
-                    (b"Colors", StringValue::from(b"A lot")),
-                    (b"Ideas", StringValue::Absent),
-                    (b"Luminosity", StringValue::from(b"Positive")),
+                    (b"Present", StringValue::from(b"Indeed")),
+                    (b"Absent", StringValue::Absent),
+                    (b"Canceled", StringValue::Canceled),
+                    (b"Final", StringValue::from(b"Bye")),
                 ],
             }
         }
@@ -607,18 +611,17 @@ mod test {
             terminfo.strings,
             collection!(
                 "bel" => b"Hello".as_slice(),
-                "tbc" => b"World!",
+                "csr" => b"World!",
             )
         );
     }
 
     #[test]
     fn base_32_bit() {
-        let mut data_set = DataSet {
+        let data_set = DataSet {
             number_type: NumberType::U32,
             ..Default::default()
         };
-        data_set.base_numbers[5] = 0x7fff_ffff;
 
         let buffer = make_buffer(&data_set, false);
         let terminfo = parse(buffer.as_slice()).unwrap();
@@ -628,14 +631,14 @@ mod test {
             collection!(
                 "cols" => 80,
                 "lines" => 25,
-                "pb" => 0x7fff_ffff,
+                "pb" => 0x10005,
             )
         );
         assert_eq!(
             terminfo.strings,
             collection!(
                 "bel" => b"Hello".as_slice(),
-                "tbc" => b"World!",
+                "csr" => b"World!",
             )
         );
     }
@@ -742,60 +745,55 @@ mod test {
         let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(
             terminfo.booleans,
-            collection!("Curly", "Italic", "Semi-bold", "bw", "xenl")
+            collection!("Primary", "Secondary", "Tertiary", "bw", "xenl")
         );
         assert_eq!(
             terminfo.numbers,
             collection!(
-                "Shades" => 1100,
-                "Variants" => 2200,
-                "cols" => 80,
-                "lines" => 25,
-                "pb" => 5,
+                "Overflowing" => 7, "Simple" => 1100, "cols" => 80, "lines" => 25, "pb" => 5
             )
         );
         assert_eq!(
             terminfo.strings,
             collection!(
-                "Colors" => b"A lot".as_slice(),
-                "Luminosity" => b"Positive",
+                "Final" => b"Bye".as_slice(),
+                "Present" => b"Indeed",
                 "bel" => b"Hello",
-                "tbc" => b"World!",
+                "csr" => b"World!",
             )
         );
     }
 
     #[test]
     fn extended_32_bit() {
-        let mut data_set = DataSet {
+        let data_set = DataSet {
             number_type: NumberType::U32,
             ..Default::default()
         };
-        data_set.base_numbers[5] = 0x7fff_ffff;
 
         let buffer = make_buffer(&data_set, true);
         let terminfo = parse(buffer.as_slice()).unwrap();
         assert_eq!(
             terminfo.booleans,
-            collection!("Curly", "Italic", "Semi-bold", "bw", "xenl")
+            collection!("Primary", "Secondary", "Tertiary", "bw", "xenl")
         );
         assert_eq!(
             terminfo.numbers,
             collection!(
-                "Shades" => 1100,
-                "Variants" => 2200,
+                "Overflowing" => 0x10007,
+                "Simple" => 1100,
                 "cols" => 80,
                 "lines" => 25,
-                "pb" => 0x7fff_ffff,
+                "pb" => 0x10005,
             )
         );
         assert_eq!(
             terminfo.strings,
             collection!(
-                "Colors" => b"A lot".as_slice(),
-                "Luminosity" => b"Positive",
+                "Final" => b"Bye".as_slice(),
+                "Present" => b"Indeed",
                 "bel" => b"Hello",
-                "tbc" => b"World!",
+                "csr" => b"World!",
             )
         );
     }
