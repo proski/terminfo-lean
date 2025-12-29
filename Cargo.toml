@@ -24,6 +24,9 @@ missing_errors_doc = "allow"
 option_if_let_else = "allow"
 too_many_lines = "allow"
 
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(coverage)'] }
+
 [dependencies]
 thiserror = "2.0.17"
 
